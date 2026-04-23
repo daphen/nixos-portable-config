@@ -32,13 +32,17 @@ fail() { printf "\033[1;31m==>\033[0m %s\n" "$*" >&2; exit 1; }
 if ! command -v nix >/dev/null 2>&1; then
   info "Nix not found — installing via the Determinate installer"
 
-  # Detect if systemd is running. Docker containers and minimal environments
-  # often lack systemd, in which case we need to tell the installer to skip
-  # setting up a daemon service.
-  if [ -d /run/systemd/system ]; then
+  # Detect if systemd is running as init. Check PID 1 directly — merely
+  # having /run/systemd/system/ isn't enough (Ubuntu images ship the dir
+  # even when running under bash as PID 1).
+  pid1_comm=""
+  if [ -r /proc/1/comm ]; then
+    pid1_comm=$(cat /proc/1/comm 2>/dev/null || true)
+  fi
+  if [ "$pid1_comm" = "systemd" ]; then
     INIT_FLAG=""
   else
-    info "No systemd detected — installing in no-daemon mode (--init none)"
+    info "No systemd init detected (PID 1: ${pid1_comm:-unknown}) — installing in no-daemon mode (--init none)"
     INIT_FLAG="--init none"
   fi
 
