@@ -46,9 +46,16 @@ if ! command -v nix >/dev/null 2>&1; then
     INIT_FLAG="--init none"
   fi
 
+  # Without systemd we need to specify the platform (linux) before --init none.
+  # With systemd, the installer auto-detects and doesn't need the platform arg.
   # shellcheck disable=SC2086
-  curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
-    | sh -s -- install $INIT_FLAG --no-confirm
+  if [ -n "$INIT_FLAG" ]; then
+    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
+      | sh -s -- install linux $INIT_FLAG --no-confirm
+  else
+    curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
+      | sh -s -- install --no-confirm
+  fi
 
   # Source the nix profile into the current shell so subsequent commands see it
   if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
