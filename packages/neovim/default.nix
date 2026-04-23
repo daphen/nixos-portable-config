@@ -165,12 +165,13 @@ let
         lua-language-server
         nil                            # Nix
         bash-language-server           # shell
-        typescript-language-server     # TS / JS
+        typescript-language-server     # TS / JS / TSX / JSX
+        tailwindcss-language-server    # Tailwind class completion
+        vscode-langservers-extracted   # cssls/html/eslint/jsonls (React-adjacent)
+        gopls                          # Go
         # pyright                      # Python — ~185MB, re-add if doing Python
-        # tailwindcss-language-server  # ~130MB, re-add if doing Tailwind
         # svelte-language-server       # ~110MB, re-add if doing Svelte
         # emmet-ls                     # ~64MB, re-add if doing HTML expansion
-        # vscode-langservers-extracted # ~79MB cssls/html/eslint/jsonls
 
         # Runtime deps the nvim config or plugins may invoke
         ripgrep
@@ -199,8 +200,9 @@ let
           # Specific grammars only — withAllGrammars pulls 150+ parsers (~200MB).
           # Add more languages to this list as you need them.
           (p.nvim-treesitter.withPlugins (ts: with ts; [
-            bash c cpp css html javascript json lua markdown markdown_inline
-            nix python regex rust toml tsx typescript vim yaml
+            bash c cpp css go gomod gosum gowork html javascript json lua
+            markdown markdown_inline nix python regex rust toml tsx
+            typescript vim yaml
           ]))
           p.nvim-treesitter-textobjects
           p.vim-tmux-navigator
