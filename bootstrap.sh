@@ -83,11 +83,19 @@ fi
 export NIX_CONFIG="experimental-features = nix-command flakes"
 
 # ── 3. Run home-manager switch ────────────────────────────────────────────
+# Home-manager's activation scripts rely on USER and HOME being set — containers
+# often launch with neither.
+export USER="${USER:-$(whoami)}"
+export HOME="${HOME:-/root}"
+info "USER=${USER} HOME=${HOME}"
+
 info "Running home-manager switch --flake ${FLAKE_URL}#${HM_ATTR}"
 info "(first run on a new host downloads ~1-2 GB from the Nix binary cache)"
 
+# --impure allows home.username/homeDirectory to come from env vars.
 nix run home-manager/master -- switch \
   --flake "${FLAKE_URL}#${HM_ATTR}" \
+  --impure \
   -b backup \
   "$@"
 

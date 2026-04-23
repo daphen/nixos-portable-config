@@ -7,11 +7,18 @@
   ];
 
   # ─────────────────────────────────────────────────────────────────────
-  # Basic identity — hardcoded for now. Override via `home.username` arg
-  # at homeManagerConfiguration time if deploying to a different user.
+  # Basic identity — resolved from the environment at eval time so this
+  # config works for any user (not just daphen). Requires --impure at
+  # home-manager switch time; bootstrap.sh passes it.
   # ─────────────────────────────────────────────────────────────────────
-  home.username = lib.mkDefault "daphen";
-  home.homeDirectory = lib.mkDefault "/home/${config.home.username}";
+  home.username = let
+    u = builtins.getEnv "USER";
+  in if u == "" then "daphen" else u;
+
+  home.homeDirectory = let
+    h = builtins.getEnv "HOME";
+  in if h == "" then "/home/${config.home.username}" else h;
+
   home.stateVersion = "24.05";
 
   # ─────────────────────────────────────────────────────────────────────
