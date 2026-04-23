@@ -28,6 +28,61 @@ info() { printf "\033[1;34m==>\033[0m %s\n" "$*"; }
 warn() { printf "\033[1;33m==>\033[0m %s\n" "$*" >&2; }
 fail() { printf "\033[1;31m==>\033[0m %s\n" "$*" >&2; exit 1; }
 
+# ── 0. Install OS-level prerequisites if missing ─────────────────────────
+# The Nix installer needs curl, xz-utils, and ca-certificates. Bare container
+# images don't ship them. Handle Debian/Ubuntu and RHEL/Fedora/Alpine.
+install_prereqs() {
+  local missing=()
+  command -v curl >/dev/null 2>&1 || missing+=(curl)
+  command -v xz   >/dev/null 2>&1 || missing+=(xz-utils)
+  [ -d /etc/ssl/certs ] || missing+=(ca-certificates)
+
+  if [ ${#missing[@]} -eq 0 ]; then
+    return 0
+  fi
+
+  info "Installing OS prerequisites: ${missing[*]}"
+
+  if command -v apt-get >/dev/null 2>&1; then
+    # Debian / Ubuntu
+    if [ "$(id -u)" = "0" ]; then
+      apt-get update >/dev/null
+      DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${missing[@]}" ca-certificates
+    else
+      sudo apt-get update >/dev/null
+      sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${missing[@]}" ca-certificates
+    fi
+  elif command -v dnf >/dev/null 2>&1; then
+    # Fedora / RHEL
+    local pkgs=()
+    for p in "${missing[@]}"; do
+      case "$p" in
+        xz-utils) pkgs+=(xz) ;;
+        *)        pkgs+=("$p") ;;
+      esac
+    done
+    if [ "$(id -u)" = "0" ]; then dnf install -y "${pkgs[@]}"
+    else sudo dnf install -y "${pkgs[@]}"
+    fi
+  elif command -v apk >/dev/null 2>&1; then
+    # Alpine
+    local pkgs=()
+    for p in "${missing[@]}"; do
+      case "$p" in
+        xz-utils) pkgs+=(xz) ;;
+        *)        pkgs+=("$p") ;;
+      esac
+    done
+    if [ "$(id -u)" = "0" ]; then apk add --no-cache "${pkgs[@]}"
+    else sudo apk add --no-cache "${pkgs[@]}"
+    fi
+  else
+    fail "No supported package manager (apt/dnf/apk) found. Install these manually first: ${missing[*]}"
+  fi
+}
+
+install_prereqs
+
 # ── 1. Install Nix if missing ────────────────────────────────────────────
 if ! command -v nix >/dev/null 2>&1; then
   info "Nix not found — installing via the Determinate installer"
