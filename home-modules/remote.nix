@@ -1,10 +1,10 @@
 { config, pkgs, lib, inputs, self, ... }:
 
 {
-  imports = [
-    # Worktrunk provides its own home-manager module (programs.worktrunk)
-    inputs.worktrunk.homeModules.default
-  ];
+  # Note: inputs.worktrunk.homeModules.default intentionally NOT imported —
+  # worktrunk builds from source (not in Hydra's cache) which triggers a
+  # Rust compile + OOMs on constrained containers. If you want worktrunk
+  # on a specific remote, build it separately and install as a package.
 
   # ─────────────────────────────────────────────────────────────────────
   # Basic identity — resolved from the environment at eval time so this
@@ -44,10 +44,6 @@
     enableFishIntegration = true;
   };
   programs.zoxide = {
-    enable = true;
-    enableFishIntegration = true;
-  };
-  programs.worktrunk = {
     enable = true;
     enableFishIntegration = true;
   };

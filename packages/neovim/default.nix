@@ -157,17 +157,20 @@ let
       settings.dont_link = config.binName != "nvim";
 
       # ── LSP servers, formatters, linters ──────────────────────────────
+      # Trimmed to essentials. Each Node-based LSP bundles its own Node
+      # runtime (~80-185MB each), so pulling the whole set triples closure
+      # size. Add back via overlay or extend this list if you need more.
       extraPackages = with pkgs; [
         # Language servers
         lua-language-server
-        pyright
-        nil
-        bash-language-server
-        tailwindcss-language-server
-        emmet-ls
-        vscode-langservers-extracted # cssls, html, eslint_ls, jsonls
-        typescript-language-server
-        svelte-language-server
+        nil                            # Nix
+        bash-language-server           # shell
+        typescript-language-server     # TS / JS
+        # pyright                      # Python — ~185MB, re-add if doing Python
+        # tailwindcss-language-server  # ~130MB, re-add if doing Tailwind
+        # svelte-language-server       # ~110MB, re-add if doing Svelte
+        # emmet-ls                     # ~64MB, re-add if doing HTML expansion
+        # vscode-langservers-extracted # ~79MB cssls/html/eslint/jsonls
 
         # Runtime deps the nvim config or plugins may invoke
         ripgrep
@@ -193,7 +196,12 @@ let
           p.nui-nvim
           p.nvim-web-devicons
           p.mini-icons
-          p.nvim-treesitter.withAllGrammars
+          # Specific grammars only — withAllGrammars pulls 150+ parsers (~200MB).
+          # Add more languages to this list as you need them.
+          (p.nvim-treesitter.withPlugins (ts: with ts; [
+            bash c cpp css html javascript json lua markdown markdown_inline
+            nix python regex rust toml tsx typescript vim yaml
+          ]))
           p.nvim-treesitter-textobjects
           p.vim-tmux-navigator
 
