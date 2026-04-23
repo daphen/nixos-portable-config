@@ -31,13 +31,34 @@ fail() { printf "\033[1;31m==>\033[0m %s\n" "$*" >&2; exit 1; }
 # ── 1. Install Nix if missing ────────────────────────────────────────────
 if ! command -v nix >/dev/null 2>&1; then
   info "Nix not found — installing via the Determinate installer"
+
+  # Detect if systemd is running. Docker containers and minimal environments
+  # often lack systemd, in which case we need to tell the installer to skip
+  # setting up a daemon service.
+  if [ -d /run/systemd/system ]; then
+    INIT_FLAG=""
+  else
+    info "No systemd detected — installing in no-daemon mode (--init none)"
+    INIT_FLAG="--init none"
+  fi
+
+  # shellcheck disable=SC2086
   curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix \
-    | sh -s -- install --no-confirm
+    | sh -s -- install $INIT_FLAG --no-confirm
 
   # Source the nix profile into the current shell so subsequent commands see it
   if [ -f /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
     # shellcheck disable=SC1091
     . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+  elif [ -f "$HOME/.nix-profile/etc/profile.d/nix.sh" ]; then
+    # Single-user install (when --init none is used) sources a different file
+    # shellcheck disable=SC1091
+    . "$HOME/.nix-profile/etc/profile.d/nix.sh"
+  fi
+
+  if ! command -v nix >/dev/null 2>&1; then
+    # Fallback: add the install locations to PATH directly
+    export PATH="/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH"
   fi
 
   if ! command -v nix >/dev/null 2>&1; then
