@@ -18,11 +18,11 @@
     "dotfiles": {
       "flake": false,
       "locked": {
-        "lastModified": 1776951561,
-        "narHash": "sha256-cpw6y2z8nsAVFwsMIWdG2lZeUzWLfIGmZuL0cSRIAQY=",
+        "lastModified": 1776954251,
+        "narHash": "sha256-I9cWhIeA9qbTIrUbmGBiJy/cBZ/2a3r9e2eHmXIy2qM=",
         "owner": "daphen",
         "repo": "dotfiles",
-        "rev": "46c657ddfa5390f65dd6644d7ea82998cfad2cab",
+        "rev": "73190cda6153df5fdc9e5c42c31c925cd4f78fc5",
         "type": "github"
       },
       "original": {
