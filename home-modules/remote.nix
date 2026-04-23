@@ -68,6 +68,7 @@
     gh
     delta
     fastfetch
+    openssh           # ssh client (git over SSH, connecting to other hosts)
 
     # Auth
     _1password-cli
