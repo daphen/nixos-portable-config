@@ -154,6 +154,35 @@ nix run home-manager/master -- switch \
   -b backup \
   "$@"
 
+# ── 4. Make home-manager's profile bin discoverable by the parent shell ──
+# HM installs packages under $HOME/.local/state/nix/profile/bin (newer) or
+# $HOME/.nix-profile/bin. Write a .bashrc snippet so new shells pick them up
+# automatically, AND print instructions for the current shell since env
+# changes from inside a piped script can't propagate back to the caller.
+for profile_dir in \
+  "$HOME/.local/state/nix/profile/bin" \
+  "$HOME/.nix-profile/bin" \
+  "/nix/var/nix/profiles/default/bin"; do
+  case ":${PATH:-}:" in
+    *":${profile_dir}:"*) ;;
+    *) PATH="${profile_dir}:${PATH:-}" ;;
+  esac
+done
+export PATH
+
+# Persist the PATH change to bashrc + bash_profile so subsequent shells see it
+rc_snippet='# Added by nixos-portable-config bootstrap — home-manager profile bins'
+for rc in "$HOME/.bashrc" "$HOME/.profile"; do
+  [ -f "$rc" ] || touch "$rc"
+  if ! grep -qF "$rc_snippet" "$rc" 2>/dev/null; then
+    {
+      echo ""
+      echo "$rc_snippet"
+      echo 'export PATH="$HOME/.local/state/nix/profile/bin:$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"'
+    } >> "$rc"
+  fi
+done
+
 info "Bootstrap complete."
 info ""
 info "Next steps (one-time per host):"
@@ -162,3 +191,4 @@ info "  2) Set up git:         ssh-add -l  # ensure an SSH key is forwarded, or 
 info "  3) Auth claude/opencode on first run"
 info ""
 info "Type 'fish' to enter the shell. 'nvim' opens with all plugins pre-installed."
+info "(If fish isn't found: open a new shell, or run 'exec bash -l' to reload PATH.)"
