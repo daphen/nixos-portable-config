@@ -58,6 +58,7 @@
   ] ++ (with pkgs; [
     # AI CLIs
     claude-code
+    codex
     opencode
 
     # CLI toolkit
