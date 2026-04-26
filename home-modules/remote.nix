@@ -126,5 +126,9 @@
 
     # Claude Code config — lives at ~/.claude (outside ~/.config)
     ".claude".source            = df + "/claude/.claude";
+
+    # Codex reads AGENTS.md the same way Claude reads CLAUDE.md — share
+    # one source file so global instructions stay in sync.
+    ".codex/AGENTS.md".source   = df + "/claude/.claude/CLAUDE.md";
   };
 }
