@@ -127,8 +127,9 @@
     # Claude Code config — lives at ~/.claude (outside ~/.config)
     ".claude".source            = df + "/claude/.claude";
 
-    # Codex reads AGENTS.md the same way Claude reads CLAUDE.md — share
-    # one source file so global instructions stay in sync.
-    ".codex/AGENTS.md".source   = df + "/claude/.claude/CLAUDE.md";
+    # AI agent instructions — neutral file at dotfiles/ai/instructions.md
+    # is the single source of truth. Claude reads it via the .claude
+    # directory symlink. Codex's AGENTS.md points directly at the same source.
+    ".codex/AGENTS.md".source   = df + "/ai/instructions.md";
   };
 }
