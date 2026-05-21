@@ -71,7 +71,11 @@ let
     # quoting predictable through the Nix multi-line string layer.
     [custom.lovbox]
     when = "true"
-    command = "if [ -n \"$LOVABLE_PROJECT_ID\" ]; then printf 'lovbox:%s' \"$(echo \"$LOVABLE_PROJECT_ID\" | cut -c1-8)\"; elif [ -n \"$SSH_CONNECTION\" ]; then printf 'ssh:%s' \"$(hostname -s)\"; fi"
+    # starship's default shell passes the command via stdin which seems to
+    # lose env in some configs. Use bash -c with %cmd% so starship invokes
+    # bash --norc -c "<command>" with the command as an argv.
+    shell = ["bash", "--norc", "-c", "%cmd%"]
+    command = "if [ -n \"$LOVABLE_PROJECT_ID\" ]; then printf 'lovbox:%s' \"$(printf '%.8s' \"$LOVABLE_PROJECT_ID\")\"; elif [ -n \"$SSH_CONNECTION\" ]; then printf 'ssh:%s' \"$(hostname -s)\"; fi"
     format = "[ $output ]($style) "
     style = "bold bg:magenta fg:white"
 
