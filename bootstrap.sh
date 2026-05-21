@@ -157,30 +157,64 @@ export USER="${USER:-$(whoami)}"
 export HOME="${HOME:-/root}"
 info "USER=${USER} HOME=${HOME}"
 
-# Lovbox sandbox images pre-install several CLI tools directly into the user's
-# nix profile (man-db, openssh, git-minimal, etc.). home-manager's new profile
-# bundles its own copies of the same files and fails to install on conflict.
-# Remove the known-conflicting stock entries so home-manager can win. No-op
-# when these aren't present (regular hosts, fresh containers).
-for stock_pkg in home-manager-path man-db openssh git-minimal; do
-  if nix profile list 2>/dev/null | grep -q "Name: *${stock_pkg}\b"; then
-    info "Removing stock '${stock_pkg}' from nix profile…"
-    nix profile remove "${stock_pkg}" 2>/dev/null || true
-  fi
-done
-
 info "Running home-manager switch --flake ${FLAKE_URL}#${HM_ATTR}"
 info "(first run on a new host downloads ~1-2 GB from the Nix binary cache)"
 
+# Home-manager bundles its packages into a single `home-manager-path` profile
+# entry. If the user's existing nix profile contains packages whose files
+# overlap (e.g. lovbox sandbox images ship man-db, openssh, git-minimal as
+# individual profile entries), the install fails with "An existing package
+# already provides …".
+#
+# Rather than maintain a brittle hand-curated strip list, we run the switch in
+# a retry loop: capture the conflict error, parse the existing package name,
+# remove it, retry. Bounded to 8 attempts to avoid infinite loops if the
+# error format ever changes.
+#
 # --impure allows home.username/homeDirectory to come from env vars.
 # -b backup renames any pre-existing dotfile (e.g. lovbox's stock .gitconfig).
 # --refresh ignores the 1h flake cache so pushes are picked up immediately.
-nix run home-manager/master -- switch \
-  --flake "${FLAKE_URL}#${HM_ATTR}" \
-  --impure \
-  --refresh \
-  -b backup \
-  "$@"
+hm_switch() {
+  nix run home-manager/master -- switch \
+    --flake "${FLAKE_URL}#${HM_ATTR}" \
+    --impure --refresh -b backup "$@"
+}
+
+attempt=1
+max_attempts=8
+while [ $attempt -le $max_attempts ]; do
+  log_file="$(mktemp -t hm-switch.XXXXXX)"
+  if hm_switch "$@" 2>&1 | tee "$log_file"; then
+    rm -f "$log_file"
+    break
+  fi
+
+  conflict_path=$(grep -A1 "An existing package already provides" "$log_file" \
+    | grep -oE '"/nix/store/[^"]+"' | head -1 | tr -d '"')
+
+  if [ -z "$conflict_path" ]; then
+    warn "home-manager switch failed and no parseable conflict — aborting."
+    rm -f "$log_file"
+    exit 1
+  fi
+
+  # Strip the /nix/store/<hash>- prefix to get pname[-version], then strip the
+  # trailing -<version>. man-db-2.13.1 -> man-db. home-manager-path stays as-is.
+  base=$(basename "$conflict_path")
+  conflict_pkg=$(echo "$base" | sed -E 's/^[a-z0-9]{32}-//' | sed -E 's/-[0-9].*$//')
+
+  info "Conflict on attempt ${attempt}: removing '${conflict_pkg}' from nix profile"
+  if ! nix profile remove "$conflict_pkg" 2>/dev/null; then
+    nix profile remove "$conflict_path" 2>/dev/null || true
+  fi
+
+  rm -f "$log_file"
+  attempt=$((attempt + 1))
+done
+
+if [ $attempt -gt $max_attempts ]; then
+  fail "home-manager switch failed after ${max_attempts} conflict-removal attempts."
+fi
 
 # ── 4. Make home-manager's profile bin discoverable by the parent shell ──
 # HM installs packages under $HOME/.local/state/nix/profile/bin (newer) or
