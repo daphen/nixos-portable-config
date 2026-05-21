@@ -1,5 +1,5 @@
 {
-  description = "Portable dev environment — fish + bundled nvim + CLI toolkit, deployable to any Linux host with Nix installed";
+  description = "Portable dev environment — ephemeral 'nix run' dev shell + a bundled nvim, deployable to any Linux host with Nix installed";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
@@ -19,7 +19,7 @@
     };
 
     # Dotfiles tree, fetched as a plain source (not a flake itself) so we can
-    # reference individual files from the HM config and bake them into the store.
+    # reference individual files from the daphen-env config tree.
     dotfiles = {
       url = "github:daphen/dotfiles";
       flake = false;
@@ -40,11 +40,22 @@
         };
       };
 
-      neovimPackagesFor = system: import ./packages/neovim {
-        pkgs = pkgsFor system;
-        inherit inputs;
-        lib = nixpkgs.lib;
-      };
+      packagesFor = system:
+        let
+          pkgs = pkgsFor system;
+          neovimPackages = import ./packages/neovim {
+            inherit pkgs inputs;
+            lib = nixpkgs.lib;
+          };
+          daphenEnv = import ./packages/daphen-env {
+            inherit pkgs inputs;
+            neovim = neovimPackages.neovim;
+          };
+        in neovimPackages // {
+          daphen-env = daphenEnv;
+          # `nix run github:daphen/nixos-portable-config` (no attr) lands here.
+          default = daphenEnv;
+        };
 
       mkHomeConfig = system: home-manager.lib.homeManagerConfiguration {
         pkgs = pkgsFor system;
@@ -54,16 +65,21 @@
 
     in {
       # ─────────────────────────────────────────────────────────────────
-      # Standalone packages — one set per system.
-      #   nix run github:daphen/nixos-portable-config#neovim
+      # Ephemeral dev-env (primary entry point for sandbox use):
+      #   nix run github:daphen/nixos-portable-config
+      # which is equivalent to `…#daphen-env`. Builds the closure into the
+      # Nix store on first run, then drops you into fish with all tools
+      # available. No profile installs, no per-host state.
+      #
+      # Also exposed: `…#neovim` for nix-run-only nvim, and the historical
+      # devMode/neovimDynamic variants for live-edit workflows on proart.
       # ─────────────────────────────────────────────────────────────────
-      packages = forAllSystems neovimPackagesFor;
+      packages = forAllSystems packagesFor;
 
       # ─────────────────────────────────────────────────────────────────
-      # Portable home-manager configurations — one per system. bootstrap.sh
-      # picks the right attr from `uname -m`. Apply manually with:
-      #   home-manager switch --flake github:daphen/nixos-portable-config#daphen-remote
-      #   home-manager switch --flake github:daphen/nixos-portable-config#daphen-remote-aarch64
+      # home-manager configurations remain for proart / other hosts that
+      # want a persistent install. Not used by the lovbox bootstrap flow
+      # anymore; that one uses `nix run` via daphen-env.
       # ─────────────────────────────────────────────────────────────────
       homeConfigurations = {
         daphen-remote          = mkHomeConfig "x86_64-linux";
