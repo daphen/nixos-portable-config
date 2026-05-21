@@ -204,22 +204,27 @@ while [ $attempt -le $max_attempts ]; do
 
   # Pull the conflict-resolution hint home-manager prints — it tells us
   # exactly which profile entry to remove:
-  #   "To remove the existing package:  nix profile remove home-manager-path"
-  # That's more reliable than parsing the store path (the message has blank
-  # lines between sections; profile entry names don't always equal pname).
+  #   "To remove the existing package:
+  #
+  #      nix profile remove home-manager-path"
+  # The blank line between header and command means we need -A3, and we
+  # parse just the package-name token after "nix profile remove".
   # `|| true` on every step so a parse miss doesn't trip set -euo pipefail.
-  conflict_pkg=$(grep -A1 "To remove the existing package" "$log_file" 2>/dev/null \
+  conflict_pkg=$(grep -A3 "To remove the existing package" "$log_file" 2>/dev/null \
     | grep -oE 'nix profile remove [^[:space:]]+' \
     | awk '{print $NF}' | head -1 || true)
 
   # Fallback: pull the store path from the "An existing package already
-  # provides" block (which spans multiple lines with blanks between).
+  # provides" block. We want JUST /nix/store/<hash>-<pname>[-<ver>] —
+  # truncate at the next "/" so we don't end up with the trailing file name.
   if [ -z "$conflict_pkg" ]; then
     conflict_path=$(grep -A5 "An existing package already provides" "$log_file" 2>/dev/null \
-      | grep -oE '/nix/store/[a-z0-9]{32}-[^"[:space:]]+' | head -1 || true)
+      | grep -oE '/nix/store/[a-z0-9]{32}-[^/"[:space:]]+' | head -1 || true)
     if [ -n "$conflict_path" ]; then
-      base=$(basename "$conflict_path" | sed -E 's|/.*$||')
-      conflict_pkg=$(echo "$base" | sed -E 's/^[a-z0-9]{32}-//' | sed -E 's/-[0-9].*$//')
+      # /nix/store/HASH-NAME[-VERSION] -> NAME (strip hash prefix and -VERSION)
+      base=${conflict_path##*/}                          # drop the dirs
+      stripped=${base#*-}                                # drop the hash- prefix
+      conflict_pkg=$(echo "$stripped" | sed -E 's/-[0-9].*$//')
     fi
   fi
 
