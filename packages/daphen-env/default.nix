@@ -48,8 +48,8 @@ let
 
     # custom.lovbox: magenta tag shown only inside SSH sessions, with the
     # project UUID's first 8 chars if we're in a lovable-on-lovable sandbox.
-    # Uses TOML basic strings with \" escapes to avoid the Nix ''-string /
-    # TOML literal-string '''-collision pitfall.
+    # TOML basic strings (double-quoted with backslash escapes) keep
+    # quoting predictable through the Nix multi-line string layer.
     [custom.lovbox]
     when = "test -n \"$SSH_CONNECTION\""
     command = "if [ -n \"$LOVABLE_PROJECT_ID\" ]; then printf 'lovbox:%s' \"$(echo \"$LOVABLE_PROJECT_ID\" | cut -c1-8)\"; else printf 'ssh:%s' \"$(hostname -s)\"; fi"
