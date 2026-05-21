@@ -184,29 +184,42 @@ attempt=1
 max_attempts=8
 while [ $attempt -le $max_attempts ]; do
   log_file="$(mktemp -t hm-switch.XXXXXX)"
+  # `set -e` is suppressed inside the `if` condition, so a failing switch
+  # falls through to the conflict-handling branch.
   if hm_switch "$@" 2>&1 | tee "$log_file"; then
     rm -f "$log_file"
     break
   fi
 
-  conflict_path=$(grep -A1 "An existing package already provides" "$log_file" \
-    | grep -oE '"/nix/store/[^"]+"' | head -1 | tr -d '"')
+  # Pull the conflict-resolution hint home-manager prints — it tells us
+  # exactly which profile entry to remove:
+  #   "To remove the existing package:  nix profile remove home-manager-path"
+  # That's more reliable than parsing the store path (the message has blank
+  # lines between sections; profile entry names don't always equal pname).
+  # `|| true` on every step so a parse miss doesn't trip set -euo pipefail.
+  conflict_pkg=$(grep -A1 "To remove the existing package" "$log_file" 2>/dev/null \
+    | grep -oE 'nix profile remove [^[:space:]]+' \
+    | awk '{print $NF}' | head -1 || true)
 
-  if [ -z "$conflict_path" ]; then
+  # Fallback: pull the store path from the "An existing package already
+  # provides" block (which spans multiple lines with blanks between).
+  if [ -z "$conflict_pkg" ]; then
+    conflict_path=$(grep -A5 "An existing package already provides" "$log_file" 2>/dev/null \
+      | grep -oE '/nix/store/[a-z0-9]{32}-[^"[:space:]]+' | head -1 || true)
+    if [ -n "$conflict_path" ]; then
+      base=$(basename "$conflict_path" | sed -E 's|/.*$||')
+      conflict_pkg=$(echo "$base" | sed -E 's/^[a-z0-9]{32}-//' | sed -E 's/-[0-9].*$//')
+    fi
+  fi
+
+  if [ -z "$conflict_pkg" ]; then
     warn "home-manager switch failed and no parseable conflict — aborting."
     rm -f "$log_file"
     exit 1
   fi
 
-  # Strip the /nix/store/<hash>- prefix to get pname[-version], then strip the
-  # trailing -<version>. man-db-2.13.1 -> man-db. home-manager-path stays as-is.
-  base=$(basename "$conflict_path")
-  conflict_pkg=$(echo "$base" | sed -E 's/^[a-z0-9]{32}-//' | sed -E 's/-[0-9].*$//')
-
   info "Conflict on attempt ${attempt}: removing '${conflict_pkg}' from nix profile"
-  if ! nix profile remove "$conflict_pkg" 2>/dev/null; then
-    nix profile remove "$conflict_path" 2>/dev/null || true
-  fi
+  nix profile remove "$conflict_pkg" 2>/dev/null || true
 
   rm -f "$log_file"
   attempt=$((attempt + 1))
