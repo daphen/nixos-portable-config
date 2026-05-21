@@ -157,13 +157,17 @@ export USER="${USER:-$(whoami)}"
 export HOME="${HOME:-/root}"
 info "USER=${USER} HOME=${HOME}"
 
-# Some sandbox images (lovbox) ship a pre-populated home-manager-path entry in
-# the user's nix profile; the new switch fails on file conflicts (man-db etc).
-# Remove it if present so the fresh switch installs cleanly. No-op when absent.
-if nix profile list 2>/dev/null | grep -q "home-manager-path"; then
-  info "Removing leftover home-manager-path profile entry…"
-  nix profile remove home-manager-path 2>/dev/null || true
-fi
+# Lovbox sandbox images pre-install several CLI tools directly into the user's
+# nix profile (man-db, openssh, git-minimal, etc.). home-manager's new profile
+# bundles its own copies of the same files and fails to install on conflict.
+# Remove the known-conflicting stock entries so home-manager can win. No-op
+# when these aren't present (regular hosts, fresh containers).
+for stock_pkg in home-manager-path man-db openssh git-minimal; do
+  if nix profile list 2>/dev/null | grep -q "Name: *${stock_pkg}\b"; then
+    info "Removing stock '${stock_pkg}' from nix profile…"
+    nix profile remove "${stock_pkg}" 2>/dev/null || true
+  fi
+done
 
 info "Running home-manager switch --flake ${FLAKE_URL}#${HM_ATTR}"
 info "(first run on a new host downloads ~1-2 GB from the Nix binary cache)"
