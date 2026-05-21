@@ -33,13 +33,31 @@ let
     # Starship: minimal sandbox prompt. We deliberately don't inherit the
     # dotfiles config — that's tuned for full local context (git branch,
     # node/bun/rust versions, etc.) which is mostly noise on a sandbox
-    # where you SSH in to do a focused task. Just the directory + prompt
-    # char. Same config for both theme_mode values (the writer below picks
-    # one regardless).
+    # where you SSH in to do a focused task. Just a remote-indicator + the
+    # directory + prompt char. Same config for both theme_mode values (the
+    # writer below picks one regardless).
+    #
+    # The custom.lovbox module surfaces a magenta tag whenever we're in an
+    # SSH session, so it's obvious at a glance that a terminal is remote.
+    # If we're in a lovable-on-lovable sandbox, the tag includes the first
+    # 8 chars of the project UUID to distinguish multiple sandboxes.
     for variant in dark light; do
       cat > "$out/starship/$variant.toml" <<'SEOF'
     add_newline = true
-    format = "$directory$character"
+    format = "$custom$directory$character"
+
+    [custom.lovbox]
+    when = '''test -n "$SSH_CONNECTION"'''
+    command = '''
+    if [ -n "$LOVABLE_PROJECT_ID" ]; then
+      printf "lovbox:%s" "$(echo "$LOVABLE_PROJECT_ID" | cut -c1-8)"
+    else
+      printf "ssh:%s" "$(hostname -s)"
+    fi
+    '''
+    format = "[ $output ]($style) "
+    style = "bold bg:magenta fg:white"
+    shell = ["sh", "-c"]
 
     [directory]
     truncation_length = 3
