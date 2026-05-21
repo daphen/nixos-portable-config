@@ -72,7 +72,7 @@ let
     [hostname]
     ssh_only = true
     format = "[ $hostname ]($style)"
-    style = "bold bg:red fg:bg"
+    style = "bold bg:blue fg:bg"
     trim_at = "."
     disabled = false
 
@@ -103,7 +103,7 @@ let
     [hostname]
     ssh_only = true
     format = "[ $hostname ]($style)"
-    style = "bold bg:red fg:bg"
+    style = "bold bg:blue fg:bg"
     trim_at = "."
     disabled = false
 
