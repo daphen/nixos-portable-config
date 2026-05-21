@@ -10,14 +10,17 @@
 #   3. Runs home-manager switch against homeConfigurations.daphen-remote
 #      from github:daphen/nixos-portable-config
 #
-# After: fish, nvim, starship, git, claude-code, opencode, and the CLI toolkit
-# are installed and ready. Plugins for nvim are pre-installed (baked into the
-# Nix store) so the first `nvim` launch is instant.
+# After: fish, nvim, starship, git, delta, and the CLI toolkit are installed
+# and ready. Plugins for nvim are pre-installed (baked into the Nix store) so
+# the first `nvim` launch is instant.
+#
+# AI CLIs (claude-code, codex, opencode) and 1Password CLI are NOT installed
+# by this config — lovbox-style containers ship the agent CLIs pre-baked, and
+# we don't use `op` on remotes. If you need them elsewhere, `nix run` or add
+# them back to home-modules/remote.nix.
 #
 # Authentication (one-time per host, not automated):
-#   - 1Password: op signin
 #   - git: set up SSH key or use ssh-agent forwarding
-#   - claude / opencode: first-run interactive or env vars
 
 set -euo pipefail
 
