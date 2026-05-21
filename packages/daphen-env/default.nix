@@ -30,6 +30,12 @@ let
       fi
     done
 
+    # Files & dirs copied from the dotfiles store path inherit nix-store
+    # permissions (0444 for files, 0555 for dirs) — read-only. The subsequent
+    # heredocs need to create new files inside these dirs and overwrite some
+    # existing ones, so flip everything under $out to user-writable up front.
+    chmod -R u+w "$out"
+
     # Starship: minimal sandbox prompt. We deliberately don't inherit the
     # dotfiles config — that's tuned for full local context (git branch,
     # node/bun/rust versions, etc.) which is mostly noise on a sandbox
@@ -106,9 +112,6 @@ let
     # ships dozens of generated theme files — none of which exist remotely.
     # This sandbox version just flips ~/.config/theme_mode; nvim's existing
     # fs_event watcher in colorscheme.lua picks up the change live.
-    # Files copied from the dotfiles store path are read-only (0444); flip
-    # the functions dir to writable before overwriting, then put it back.
-    chmod -R u+w $out/fish/functions
     cat > $out/fish/functions/toggle_theme.fish <<'FEOF'
     function toggle_theme --description "Flip ~/.config/theme_mode between dark and light (sandbox version)"
         set -l current "light"
