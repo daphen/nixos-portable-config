@@ -135,8 +135,11 @@ end
 
 --- Refresh the cached niri workspace_id asynchronously so the heartbeat
 --- never blocks on the subprocess. Falls back to a sync call on older nvims
---- without vim.system.
+--- without vim.system. No-op on hosts without niri (remote SSH sandboxes,
+--- non-niri compositors) — _cached_workspace_id stays nil, which the rest
+--- of preview.lua treats as "no workspace info".
 local function refresh_workspace_id_async()
+	if vim.fn.executable("niri") ~= 1 then return end
 	if not vim.system then
 		local ws = niri_windows()
 		if ws then
