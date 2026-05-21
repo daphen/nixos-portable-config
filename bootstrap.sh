@@ -157,15 +157,24 @@ export USER="${USER:-$(whoami)}"
 export HOME="${HOME:-/root}"
 info "USER=${USER} HOME=${HOME}"
 
+# Some sandbox images (lovbox) ship a pre-populated home-manager-path entry in
+# the user's nix profile; the new switch fails on file conflicts (man-db etc).
+# Remove it if present so the fresh switch installs cleanly. No-op when absent.
+if nix profile list 2>/dev/null | grep -q "home-manager-path"; then
+  info "Removing leftover home-manager-path profile entry…"
+  nix profile remove home-manager-path 2>/dev/null || true
+fi
+
 info "Running home-manager switch --flake ${FLAKE_URL}#${HM_ATTR}"
 info "(first run on a new host downloads ~1-2 GB from the Nix binary cache)"
 
 # --impure allows home.username/homeDirectory to come from env vars.
+# -b backup renames any pre-existing dotfile (e.g. lovbox's stock .gitconfig).
+# --refresh ignores the 1h flake cache so pushes are picked up immediately.
 nix run home-manager/master -- switch \
   --flake "${FLAKE_URL}#${HM_ATTR}" \
   --impure \
   --refresh \
-  -b backup \
   -b backup \
   "$@"
 
