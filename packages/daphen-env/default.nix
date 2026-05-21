@@ -61,8 +61,8 @@ let
     add_newline = true
     # Explicit reference to custom.lovbox because some starship versions
     # don't expand $custom to include conditional modules. The leading
-    # double-single-quote in front of $ escapes Nix antiquotation so the
-    # literal ${custom.lovbox} survives into the TOML output.
+    # double-single-quote escapes Nix antiquotation so the literal
+    # dollar-brace-custom survives into the TOML output.
     format = "''${custom.lovbox}$directory$character"
 
     # custom.lovbox: magenta tag shown only inside SSH sessions, with the
