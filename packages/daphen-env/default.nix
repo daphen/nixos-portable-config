@@ -40,6 +40,9 @@ let
     # ships dozens of generated theme files — none of which exist remotely.
     # This sandbox version just flips ~/.config/theme_mode; nvim's existing
     # fs_event watcher in colorscheme.lua picks up the change live.
+    # Files copied from the dotfiles store path are read-only (0444); flip
+    # the functions dir to writable before overwriting, then put it back.
+    chmod -R u+w $out/fish/functions
     cat > $out/fish/functions/toggle_theme.fish <<'FEOF'
     function toggle_theme --description "Flip ~/.config/theme_mode between dark and light (sandbox version)"
         set -l current "light"
