@@ -166,6 +166,7 @@ nix run home-manager/master -- switch \
   --impure \
   --refresh \
   -b backup \
+  -b backup \
   "$@"
 
 # ── 4. Make home-manager's profile bin discoverable by the parent shell ──
