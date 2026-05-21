@@ -202,40 +202,51 @@ while [ $attempt -le $max_attempts ]; do
     break
   fi
 
-  # Pull the conflict-resolution hint home-manager prints — it tells us
-  # exactly which profile entry to remove:
-  #   "To remove the existing package:
+  # Extract the *store path* of the conflicting "existing" package from
+  # the error block. Removing by store path is more reliable than removing
+  # by name: nix profile entries don't always have the name you'd guess
+  # (the error tells the user "nix profile remove home-manager-path" but
+  # that name may not match an actual profile entry).
   #
-  #      nix profile remove home-manager-path"
-  # The blank line between header and command means we need -A3, and we
-  # parse just the package-name token after "nix profile remove".
-  # `|| true` on every step so a parse miss doesn't trip set -euo pipefail.
-  conflict_pkg=$(grep -A3 "To remove the existing package" "$log_file" 2>/dev/null \
-    | grep -oE 'nix profile remove [^[:space:]]+' \
-    | awk '{print $NF}' | head -1 || true)
+  # Error format:
+  #   error: An existing package already provides the following file:
+  #
+  #            "/nix/store/HASH-NAME/lib/tmpfiles.d/foo.conf"
+  #
+  # We want /nix/store/HASH-NAME (truncated at the next "/" so we drop the
+  # trailing file path). `|| true` on each pipeline step so a parse miss
+  # doesn't trip set -euo pipefail.
+  conflict_path=$(grep -A2 "An existing package already provides" "$log_file" 2>/dev/null \
+    | grep -oE '/nix/store/[a-z0-9]{32}-[^/"[:space:]]+' | head -1 || true)
 
-  # Fallback: pull the store path from the "An existing package already
-  # provides" block. We want JUST /nix/store/<hash>-<pname>[-<ver>] —
-  # truncate at the next "/" so we don't end up with the trailing file name.
-  if [ -z "$conflict_pkg" ]; then
-    conflict_path=$(grep -A5 "An existing package already provides" "$log_file" 2>/dev/null \
-      | grep -oE '/nix/store/[a-z0-9]{32}-[^/"[:space:]]+' | head -1 || true)
-    if [ -n "$conflict_path" ]; then
-      # /nix/store/HASH-NAME[-VERSION] -> NAME (strip hash prefix and -VERSION)
-      base=${conflict_path##*/}                          # drop the dirs
-      stripped=${base#*-}                                # drop the hash- prefix
-      conflict_pkg=$(echo "$stripped" | sed -E 's/-[0-9].*$//')
-    fi
-  fi
-
-  if [ -z "$conflict_pkg" ]; then
+  if [ -z "$conflict_path" ]; then
     warn "home-manager switch failed and no parseable conflict — aborting."
     rm -f "$log_file"
     exit 1
   fi
 
-  info "Conflict on attempt ${attempt}: removing '${conflict_pkg}' from nix profile"
-  nix profile remove "$conflict_pkg" 2>/dev/null || true
+  # Derive a readable name for logging only (HASH-NAME-VERSION -> NAME).
+  base=${conflict_path##*/}
+  stripped=${base#*-}
+  conflict_pkg=$(echo "$stripped" | sed -E 's/-[0-9].*$//')
+
+  info "Conflict on attempt ${attempt}: removing '${conflict_pkg}' (${conflict_path}) from nix profile"
+
+  # Try by store path first (most reliable), then by name as fallback.
+  if ! nix profile remove "$conflict_path" 2>&1 | tee -a "$log_file"; then
+    nix profile remove "$conflict_pkg" 2>&1 | tee -a "$log_file" || true
+  fi
+
+  # Sanity check: did the conflict path actually leave the profile? If
+  # the remove silently no-op'd we'll just loop forever — bail with a
+  # clear message instead.
+  if nix profile list 2>/dev/null | grep -qF "$conflict_path"; then
+    warn "nix profile still references ${conflict_path} after remove."
+    warn "Profile state:"
+    nix profile list 2>&1 | head -40 >&2
+    rm -f "$log_file"
+    exit 1
+  fi
 
   rm -f "$log_file"
   attempt=$((attempt + 1))
