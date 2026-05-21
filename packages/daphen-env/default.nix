@@ -59,25 +59,17 @@ let
     for variant in dark light; do
       cat > "$out/starship/$variant.toml" <<'SEOF'
     add_newline = true
-    # Explicit reference to custom.lovbox because some starship versions
-    # don't expand $custom to include conditional modules. The leading
-    # double-single-quote escapes Nix antiquotation so the literal
-    # dollar-brace-custom survives into the TOML output.
-    format = "''${custom.lovbox}$directory$character"
+    format = "$hostname$directory$character"
 
-    # custom.lovbox: magenta tag shown only inside SSH sessions, with the
-    # project UUID's first 8 chars if we're in a lovable-on-lovable sandbox.
-    # TOML basic strings (double-quoted with backslash escapes) keep
-    # quoting predictable through the Nix multi-line string layer.
-    [custom.lovbox]
-    when = "true"
-    # starship's default shell passes the command via stdin which seems to
-    # lose env in some configs. Use bash -c with %cmd% so starship invokes
-    # bash --norc -c "<command>" with the command as an argv.
-    shell = ["bash", "--norc", "-c", "%cmd%"]
-    command = "if [ -n \"$LOVABLE_PROJECT_ID\" ]; then printf 'lovbox:%s' \"$(printf '%.8s' \"$LOVABLE_PROJECT_ID\")\"; elif [ -n \"$SSH_CONNECTION\" ]; then printf 'ssh:%s' \"$(hostname -s)\"; fi"
-    format = "[ $output ]($style) "
+    # Built-in hostname module — only shown inside SSH sessions (default
+    # behavior with ssh_only=true). Cuts the long pool-replica hostname
+    # to its short form via the trim_at setting (starship-supported).
+    [hostname]
+    ssh_only = true
+    format = "[ $hostname ]($style) "
     style = "bold bg:magenta fg:white"
+    trim_at = "."
+    disabled = false
 
     [directory]
     truncation_length = 3
