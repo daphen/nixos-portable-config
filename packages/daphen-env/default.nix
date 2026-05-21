@@ -30,9 +30,15 @@ let
       fi
     done
 
-    # Starship prompt
-    if [ -e "${dotfiles}/starship/.config/starship/starship.toml" ]; then
-      cp "${dotfiles}/starship/.config/starship/starship.toml" "$out/starship/starship.toml"
+    # Starship: bake BOTH variants from the theme-generator output. The
+    # wrapper picks one at launch based on ~/.config/theme_mode.
+    if [ -e "${dotfiles}/themes/.config/themes/generated/starship/dark.theme" ]; then
+      cp "${dotfiles}/themes/.config/themes/generated/starship/dark.theme"  "$out/starship/dark.toml"
+      cp "${dotfiles}/themes/.config/themes/generated/starship/light.theme" "$out/starship/light.toml"
+    elif [ -e "${dotfiles}/starship/.config/starship/starship.toml" ]; then
+      # Fallback: single variant if the generator output isn't there.
+      cp "${dotfiles}/starship/.config/starship/starship.toml" "$out/starship/dark.toml"
+      cp "${dotfiles}/starship/.config/starship/starship.toml" "$out/starship/light.toml"
     fi
 
     # Override the dotfiles toggle_theme with a sandbox-friendly version.
@@ -132,6 +138,13 @@ in pkgs.writeShellApplication {
     if [ ! -f "$HOME/.config/theme_mode" ]; then
       mkdir -p "$HOME/.config"
       echo light > "$HOME/.config/theme_mode"
+    fi
+
+    # Materialize the matching starship variant. Re-evaluated each launch
+    # so an `exec fish` after toggle_theme picks up the new prompt.
+    THEME_MODE=$(cat "$HOME/.config/theme_mode" 2>/dev/null || echo light)
+    if [ -e "$WRITABLE_CONFIG/starship/$THEME_MODE.toml" ]; then
+      cp -f "$WRITABLE_CONFIG/starship/$THEME_MODE.toml" "$WRITABLE_CONFIG/starship/starship.toml"
     fi
 
     export XDG_CONFIG_HOME="$WRITABLE_CONFIG"
