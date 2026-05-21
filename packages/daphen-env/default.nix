@@ -35,6 +35,26 @@ let
       cp "${dotfiles}/starship/.config/starship/starship.toml" "$out/starship/starship.toml"
     fi
 
+    # Override the dotfiles toggle_theme with a sandbox-friendly version.
+    # The full theme-manager.sh expects niri/kitty/waybar to be running and
+    # ships dozens of generated theme files — none of which exist remotely.
+    # This sandbox version just flips ~/.config/theme_mode; nvim's existing
+    # fs_event watcher in colorscheme.lua picks up the change live.
+    cat > $out/fish/functions/toggle_theme.fish <<'FEOF'
+    function toggle_theme --description "Flip ~/.config/theme_mode between dark and light (sandbox version)"
+        set -l current "light"
+        if test -f ~/.config/theme_mode
+            set current (cat ~/.config/theme_mode)
+        end
+        set -l next "dark"
+        if test "$current" = "dark"
+            set next "light"
+        end
+        echo "$next" > ~/.config/theme_mode
+        echo "→ theme_mode: $next"
+    end
+    FEOF
+
     # Git: write a minimal gitconfig pointing delta as the pager, set
     # identity from dotfiles, skip the includeIf entries (they reference
     # absolute paths under ~/personal etc. that don't exist on sandboxes).
@@ -102,6 +122,14 @@ in pkgs.writeShellApplication {
     mkdir -p "$WRITABLE_CONFIG"
     cp -rL --no-preserve=mode "${configRoot}"/. "$WRITABLE_CONFIG/"
     chmod -R u+w "$WRITABLE_CONFIG"
+
+    # Default ~/.config/theme_mode to "light" on first launch so nvim's
+    # colorscheme.lua picks the light variant. Doesn't clobber an existing
+    # preference — the toggle_theme function writes there too.
+    if [ ! -f "$HOME/.config/theme_mode" ]; then
+      mkdir -p "$HOME/.config"
+      echo light > "$HOME/.config/theme_mode"
+    fi
 
     export XDG_CONFIG_HOME="$WRITABLE_CONFIG"
     export GIT_CONFIG_GLOBAL="$WRITABLE_CONFIG/gitconfig"
