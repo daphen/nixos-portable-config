@@ -59,10 +59,10 @@ let
     for variant in dark light; do
       cat > "$out/starship/$variant.toml" <<'SEOF'
     add_newline = true
-    # ''${custom.lovbox} written in Nix produces the literal ${custom.lovbox}
-    # in the output TOML (the leading '' escapes Nix's antiquotation).
-    # Explicit reference because some starship versions don't expand $custom
-    # to include conditional modules.
+    # Explicit reference to custom.lovbox because some starship versions
+    # don't expand $custom to include conditional modules. The leading
+    # double-single-quote in front of $ escapes Nix antiquotation so the
+    # literal ${custom.lovbox} survives into the TOML output.
     format = "''${custom.lovbox}$directory$character"
 
     # custom.lovbox: magenta tag shown only inside SSH sessions, with the
