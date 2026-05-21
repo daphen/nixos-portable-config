@@ -56,33 +56,67 @@ let
     # SSH session, so it's obvious at a glance that a terminal is remote.
     # If we're in a lovable-on-lovable sandbox, the tag includes the first
     # 8 chars of the project UUID to distinguish multiple sandboxes.
-    for variant in dark light; do
-      cat > "$out/starship/$variant.toml" <<'SEOF'
+    # Light variant
+    cat > "$out/starship/light.toml" <<'SEOF'
     add_newline = true
+    palette = "custom"
     format = "$hostname$directory\n$character "
 
-    # Hostname pill (only in SSH sessions) — vivid magenta hex so it's
-    # immediately distinguishable from the local dark-gray pill. Trim at
-    # the first dot so we get the short pool replica name.
+    [palettes.custom]
+    bg     = "#FAF9F6"
+    prompt = "#E8EAED"
+    fg     = "#2D4A3D"
+    red    = "#A8333A"
+    green  = "#5E7270"
+
     [hostname]
     ssh_only = true
     format = "[ $hostname ]($style)"
-    style = "bold bg:#c84a7a fg:#ffffff"
+    style = "bold bg:red fg:bg"
     trim_at = "."
     disabled = false
 
-    # Directory pill in the same dark-bar style as the local prompt.
     [directory]
     truncation_length = 3
     truncation_symbol = "…/"
     format = "[ $path ]($style)"
-    style = "bold bg:#1f1f1f fg:#e0e0e0"
+    style = "bold bg:prompt fg:fg"
 
     [character]
-    success_symbol = "[❯](#7eaa6f)"
-    error_symbol = "[❯](#cc4d4d)"
+    success_symbol = "[❯](green)"
+    error_symbol = "[❯](red)"
     SEOF
-    done
+
+    # Dark variant
+    cat > "$out/starship/dark.toml" <<'SEOF'
+    add_newline = true
+    palette = "custom"
+    format = "$hostname$directory\n$character "
+
+    [palettes.custom]
+    bg     = "#181818"
+    prompt = "#323A40"
+    fg     = "#EDEDED"
+    red    = "#FF7B72"
+    green  = "#97B5A6"
+
+    [hostname]
+    ssh_only = true
+    format = "[ $hostname ]($style)"
+    style = "bold bg:red fg:bg"
+    trim_at = "."
+    disabled = false
+
+    [directory]
+    truncation_length = 3
+    truncation_symbol = "…/"
+    format = "[ $path ]($style)"
+    style = "bold bg:prompt fg:fg"
+
+    [character]
+    success_symbol = "[❯](green)"
+    error_symbol = "[❯](red)"
+    SEOF
 
     # lov-gh-auth: one-shot fish function to wire gh + git to YOUR identity
     # inside a sandbox. Shared lovbox sandboxes inject the org GitHub App
