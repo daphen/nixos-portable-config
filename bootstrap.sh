@@ -164,6 +164,7 @@ info "(first run on a new host downloads ~1-2 GB from the Nix binary cache)"
 nix run home-manager/master -- switch \
   --flake "${FLAKE_URL}#${HM_ATTR}" \
   --impure \
+  --refresh \
   -b backup \
   "$@"
 
