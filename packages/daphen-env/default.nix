@@ -59,27 +59,28 @@ let
     for variant in dark light; do
       cat > "$out/starship/$variant.toml" <<'SEOF'
     add_newline = true
-    format = "$hostname$directory$character"
+    format = "$hostname$directory\n$character "
 
-    # Built-in hostname module — only shown inside SSH sessions (default
-    # behavior with ssh_only=true). Cuts the long pool-replica hostname
-    # to its short form via the trim_at setting (starship-supported).
+    # Hostname pill (only in SSH sessions) — vivid magenta hex so it's
+    # immediately distinguishable from the local dark-gray pill. Trim at
+    # the first dot so we get the short pool replica name.
     [hostname]
     ssh_only = true
-    format = "[ $hostname ]($style) "
-    style = "bold bg:magenta fg:white"
+    format = "[ $hostname ]($style)"
+    style = "bold bg:#c84a7a fg:#ffffff"
     trim_at = "."
     disabled = false
 
+    # Directory pill in the same dark-bar style as the local prompt.
     [directory]
     truncation_length = 3
     truncation_symbol = "…/"
-    format = "[$path]($style) "
-    style = "bold cyan"
+    format = "[ $path ]($style)"
+    style = "bold bg:#1f1f1f fg:#e0e0e0"
 
     [character]
-    success_symbol = "[❯](green)"
-    error_symbol = "[❯](red)"
+    success_symbol = "[❯](#7eaa6f)"
+    error_symbol = "[❯](#cc4d4d)"
     SEOF
     done
 
