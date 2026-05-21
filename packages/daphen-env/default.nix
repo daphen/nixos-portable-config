@@ -30,27 +30,27 @@ let
       fi
     done
 
-    # Starship: bake BOTH variants from the theme-generator output. The
-    # wrapper picks one at launch based on ~/.config/theme_mode.
-    if [ -e "${dotfiles}/themes/.config/themes/generated/starship/dark.theme" ]; then
-      cp "${dotfiles}/themes/.config/themes/generated/starship/dark.theme"  "$out/starship/dark.toml"
-      cp "${dotfiles}/themes/.config/themes/generated/starship/light.theme" "$out/starship/light.toml"
-    elif [ -e "${dotfiles}/starship/.config/starship/starship.toml" ]; then
-      # Fallback: single variant if the generator output isn't there.
-      cp "${dotfiles}/starship/.config/starship/starship.toml" "$out/starship/dark.toml"
-      cp "${dotfiles}/starship/.config/starship/starship.toml" "$out/starship/light.toml"
-    fi
-
-    # Sandbox-only tweak: truncate noisy branch names (lovable agents use
-    # uuid-suffixed branches like "edit/edt-3fc906fd-e730-…"). Insert
-    # truncation knobs right under each [git_branch] section header.
-    chmod -R u+w "$out/starship"
+    # Starship: minimal sandbox prompt. We deliberately don't inherit the
+    # dotfiles config — that's tuned for full local context (git branch,
+    # node/bun/rust versions, etc.) which is mostly noise on a sandbox
+    # where you SSH in to do a focused task. Just the directory + prompt
+    # char. Same config for both theme_mode values (the writer below picks
+    # one regardless).
     for variant in dark light; do
-      if [ -e "$out/starship/$variant.toml" ]; then
-        ${pkgs.gnused}/bin/sed -i '/^\[git_branch\]/a\
-    truncation_length = 16\
-    truncation_symbol = "…"' "$out/starship/$variant.toml"
-      fi
+      cat > "$out/starship/$variant.toml" <<'SEOF'
+    add_newline = true
+    format = "$directory$character"
+
+    [directory]
+    truncation_length = 3
+    truncation_symbol = "…/"
+    format = "[$path]($style) "
+    style = "bold cyan"
+
+    [character]
+    success_symbol = "[❯](green)"
+    error_symbol = "[❯](red)"
+    SEOF
     done
 
     # Override the dotfiles toggle_theme with a sandbox-friendly version.
