@@ -15,15 +15,25 @@ let
   configRoot = pkgs.runCommand "daphen-env-config" { } ''
     mkdir -p $out/fish $out/starship
 
-    # Fish: config.fish, conf.d, functions, completions
-    cp ${dotfiles}/fish/.config/fish/config.fish     $out/fish/config.fish
-    cp -r ${dotfiles}/fish/.config/fish/conf.d       $out/fish/conf.d
-    cp -r ${dotfiles}/fish/.config/fish/functions    $out/fish/functions
-    cp -r ${dotfiles}/fish/.config/fish/completions  $out/fish/completions
-    cp ${dotfiles}/fish/.config/fish/fish_plugins    $out/fish/fish_plugins
+    # Fish: config.fish, conf.d, functions, fish_plugins (completions/ isn't
+    # in the dotfiles repo — fish autoloads built-in completions from the
+    # Nix package itself). Copy each optionally so a missing file doesn't
+    # tank the whole build.
+    for src in config.fish fish_plugins; do
+      if [ -e "${dotfiles}/fish/.config/fish/$src" ]; then
+        cp "${dotfiles}/fish/.config/fish/$src" "$out/fish/$src"
+      fi
+    done
+    for dir in conf.d functions completions; do
+      if [ -d "${dotfiles}/fish/.config/fish/$dir" ]; then
+        cp -r "${dotfiles}/fish/.config/fish/$dir" "$out/fish/$dir"
+      fi
+    done
 
     # Starship prompt
-    cp ${dotfiles}/starship/.config/starship/starship.toml $out/starship/starship.toml
+    if [ -e "${dotfiles}/starship/.config/starship/starship.toml" ]; then
+      cp "${dotfiles}/starship/.config/starship/starship.toml" "$out/starship/starship.toml"
+    fi
 
     # Git: write a minimal gitconfig pointing delta as the pager, set
     # identity from dotfiles, skip the includeIf entries (they reference
