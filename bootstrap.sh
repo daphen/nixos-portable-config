@@ -24,6 +24,13 @@
 
 set -euo pipefail
 
+# This script is meant to be run via `curl … | bash`. In that mode any child
+# process can consume bytes from bash's stdin (the curl pipe), which would
+# eat the rest of this script before bash gets to read it. Detach our own
+# stdin from the curl pipe up front: keep the original on FD 3 in case
+# something genuinely needs interactive input, and point FD 0 at /dev/null.
+exec 3<&0 0</dev/null
+
 readonly FLAKE_URL="${FLAKE_URL:-github:daphen/nixos-portable-config}"
 
 # Pick the home-manager attr matching the current arch. The flake exposes
@@ -175,9 +182,13 @@ info "(first run on a new host downloads ~1-2 GB from the Nix binary cache)"
 # -b backup renames any pre-existing dotfile (e.g. lovbox's stock .gitconfig).
 # --refresh ignores the 1h flake cache so pushes are picked up immediately.
 hm_switch() {
+  # </dev/null prevents nix/home-manager from consuming the rest of this
+  # script when bootstrap.sh is invoked via `curl … | bash`. Without this,
+  # subprocesses inherit the curl pipe as stdin and may eat lines we still
+  # need to read (so the retry loop below never executes).
   nix run home-manager/master -- switch \
     --flake "${FLAKE_URL}#${HM_ATTR}" \
-    --impure --refresh -b backup "$@"
+    --impure --refresh -b backup "$@" </dev/null
 }
 
 attempt=1
