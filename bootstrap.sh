@@ -24,12 +24,12 @@
 
 set -euo pipefail
 
-# This script is meant to be run via `curl … | bash`. In that mode any child
-# process can consume bytes from bash's stdin (the curl pipe), which would
-# eat the rest of this script before bash gets to read it. Detach our own
-# stdin from the curl pipe up front: keep the original on FD 3 in case
-# something genuinely needs interactive input, and point FD 0 at /dev/null.
-exec 3<&0 0</dev/null
+# Note on `curl | bash`: subprocesses inherit the curl pipe as stdin. If a
+# subprocess reads stdin it can eat the rest of the script before bash gets
+# to it. Don't redirect bash's own stdin globally — bash reads the script
+# from FD 0, and redirecting FD 0 would EOF the script. Instead, put
+# `</dev/null` on individual subprocess calls that might read stdin
+# (currently the home-manager invocation in hm_switch).
 
 readonly FLAKE_URL="${FLAKE_URL:-github:daphen/nixos-portable-config}"
 
