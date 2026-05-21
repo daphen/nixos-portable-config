@@ -36,6 +36,15 @@ let
     # existing ones, so flip everything under $out to user-writable up front.
     chmod -R u+w "$out"
 
+    # Claude Code themes — the CLI's pre-installed in the lovbox image, but
+    # it reads themes from ~/.claude/themes/. Ship daphen's custom ones so
+    # the prompt colors match proart. The wrapper script symlinks/copies
+    # this dir into $HOME at launch.
+    if [ -d "${dotfiles}/claude/.claude/themes" ]; then
+      mkdir -p "$out/claude/themes"
+      cp -r "${dotfiles}/claude/.claude/themes"/* "$out/claude/themes/" 2>/dev/null || true
+    fi
+
     # Starship: minimal sandbox prompt. We deliberately don't inherit the
     # dotfiles config — that's tuned for full local context (git branch,
     # node/bun/rust versions, etc.) which is mostly noise on a sandbox
@@ -50,18 +59,20 @@ let
     for variant in dark light; do
       cat > "$out/starship/$variant.toml" <<'SEOF'
     add_newline = true
-    format = "$custom$directory$character"
+    # $custom.lovbox is explicit (some starship versions don't expand $custom
+    # to include unused/empty modules); falling back through the rest if it
+    # doesn't render.
+    format = "${custom.lovbox}$directory$character"
 
     # custom.lovbox: magenta tag shown only inside SSH sessions, with the
     # project UUID's first 8 chars if we're in a lovable-on-lovable sandbox.
     # TOML basic strings (double-quoted with backslash escapes) keep
     # quoting predictable through the Nix multi-line string layer.
     [custom.lovbox]
-    when = "test -n \"$SSH_CONNECTION\""
-    command = "if [ -n \"$LOVABLE_PROJECT_ID\" ]; then printf 'lovbox:%s' \"$(echo \"$LOVABLE_PROJECT_ID\" | cut -c1-8)\"; else printf 'ssh:%s' \"$(hostname -s)\"; fi"
+    when = "true"
+    command = "if [ -n \"$LOVABLE_PROJECT_ID\" ]; then printf 'lovbox:%s' \"$(echo \"$LOVABLE_PROJECT_ID\" | cut -c1-8)\"; elif [ -n \"$SSH_CONNECTION\" ]; then printf 'ssh:%s' \"$(hostname -s)\"; else printf ''; fi"
     format = "[ $output ]($style) "
     style = "bold bg:magenta fg:white"
-    shell = ["sh", "-c"]
 
     [directory]
     truncation_length = 3
@@ -201,6 +212,15 @@ in pkgs.writeShellApplication {
     if [ ! -f "$HOME/.config/theme_mode" ]; then
       mkdir -p "$HOME/.config"
       echo light > "$HOME/.config/theme_mode"
+    fi
+
+    # Sync Claude Code themes into ~/.claude/themes/ so the CLI in the
+    # sandbox (pre-installed by the lovbox image) picks them up. Copy
+    # rather than symlink so claude can write its own state alongside
+    # without trying to write into the read-only nix store.
+    if [ -d "${configRoot}/claude/themes" ]; then
+      mkdir -p "$HOME/.claude/themes"
+      cp -fL "${configRoot}/claude/themes"/* "$HOME/.claude/themes/" 2>/dev/null || true
     fi
 
     # Materialize the matching starship variant. Re-evaluated each launch
