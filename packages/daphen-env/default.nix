@@ -69,6 +69,38 @@ let
     SEOF
     done
 
+    # lov-gh-auth: one-shot fish function to wire gh + git to YOUR identity
+    # inside a sandbox. Shared lovbox sandboxes inject the org GitHub App
+    # bot's token by default, so PRs/pushes are attributed to the bot. Run
+    # this once per sandbox (state persists on the PVC) with your personal
+    # gh token pasted as the argument, or via stdin.
+    cat > $out/fish/functions/lov-gh-auth.fish <<'GHEOF'
+    function lov-gh-auth --description "Authenticate gh + git as you (not the lovbox bot) in this sandbox"
+        set -l token $argv[1]
+        if test -z "$token"
+            echo "Usage: lov-gh-auth <github-token>"
+            echo "  or:  echo <token> | lov-gh-auth"
+            echo
+            echo "Get your token on proart:"
+            echo "  gh auth token"
+            echo
+            echo "Then paste it as the argument here."
+            if not isatty stdin
+                read token
+            else
+                return 1
+            end
+        end
+        if test -z "$token"
+            echo "✗ No token provided."
+            return 1
+        end
+        echo "$token" | gh auth login --with-token --hostname github.com
+        and git config --global --replace-all credential.helper "!gh auth git-credential"
+        and echo "✓ gh + git wired to your identity. PRs/pushes will now show as you."
+    end
+    GHEOF
+
     # Override the dotfiles toggle_theme with a sandbox-friendly version.
     # The full theme-manager.sh expects niri/kitty/waybar to be running and
     # ships dozens of generated theme files — none of which exist remotely.
