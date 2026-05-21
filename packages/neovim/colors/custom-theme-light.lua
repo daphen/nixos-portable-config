@@ -12,56 +12,56 @@ vim.o.background = "light"
 -- Color palette
 local c = {
   -- Background colors
-  bg = "#FDF6E3",
-  bg_secondary = "#F9F2DF",
-  bg_tertiary = "#FDF6E3",
-  bg_selection = "#E0D5C5",
-  bg_surface = "#F9F2DF",
-  bg_overlay = "#EBE4D6",
+  bg = "#FAF9F6",
+  bg_secondary = "#F2F1EE",
+  bg_tertiary = "#F0EFEC",
+  bg_selection = "#E7E5E1",
+  bg_surface = "#EDECE9",
+  bg_overlay = "#E0DFDC",
 
   -- Foreground colors
   fg = "#2D4A3D",
   fg_secondary = "#575279",
-  fg_muted = "#9893a5",
-  fg_subtle = "#8A92A7",
+  fg_muted = "#6B6E7A",
+  fg_subtle = "#636463",
 
   -- Accent colors
-  red = "#ED333B",
-  orange = "#d7827e",
+  red = "#A8333A",
+  orange = "#e16511",
   yellow = "#69756C",
   green = "#5E7270",
-  cyan = "#4A7C59",
+  cyan = "#397446",
   blue = "#286983",
-  purple = "#B8713A",
-  pink = "#8A92A7",
+  purple = "#eb2146",
+  pink = "#516088",
 
   -- Semantic colors
-  error = "#ED333B",
+  error = "#A8333A",
   warning = "#69756C",
   success = "#5E7270",
-  info = "#4A7C59",
-  keyword = "#ED333B",
+  info = "#397446",
+  keyword = "#A8333A",
   command = "#286983",
-  operator = "#4A7C59",
-  comment = "#9893a5",
-  string = "#4A7C59",
+  operator = "#397446",
+  comment = "#6B6E7A",
+  string = "#397446",
   ["function"] = "#286983",
-  type = "#4A7C59",
-  number = "#ED333B",
-  boolean = "#B8713A",
+  type = "#397446",
+  number = "#A8333A",
+  boolean = "#eb2146",
   variable = "#2D4A3D",
-  property = "#4A7C59",
-  method = "#d7827e",
+  property = "#397446",
+  method = "#e16511",
   tag = "#286983",
-  attribute = "#4A7C59",
+  attribute = "#397446",
 
   -- Highlights
   highlight_low = "#E8EAED",
   highlight_med = "#D5D8DD",
   highlight_high = "#C2C6CC",
-  highlight_succ = "#D5D5C6",
+  highlight_succ = "#E2EAE4",
   highlight_warn = "#D8D5C5",
-  highlight_err = "#F9C5B9",
+  highlight_err = "#EED8D0",
 
   -- Special
   cursor = "#FF570D",
@@ -231,6 +231,9 @@ hl("@text.literal", { fg = c.fg })
 hl("@text.reference", { link = "String" })
 hl("@text.uri", { fg = c.blue, underline = true })
 hl("@type.builtin", { link = "@type" })
+hl("@variable", { fg = c.fg })
+hl("@variable.parameter", { link = "@variable" })
+hl("@variable.member", { fg = c.fg })
 
 -- JSX/TSX (Legacy treesitter)
 hl("@tag", { fg = c.tag })

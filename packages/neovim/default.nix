@@ -236,6 +236,7 @@ let
             customPlugins.lualine-so-fancy
             p.snacks-nvim
             p.markview-nvim
+            p.render-markdown-nvim
             p.neo-tree-nvim
             p.fyler-nvim
             p.floaterm
