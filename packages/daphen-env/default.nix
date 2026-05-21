@@ -70,7 +70,7 @@ let
     # quoting predictable through the Nix multi-line string layer.
     [custom.lovbox]
     when = "true"
-    command = "if [ -n \"$LOVABLE_PROJECT_ID\" ]; then printf 'lovbox:%s' \"$(echo \"$LOVABLE_PROJECT_ID\" | cut -c1-8)\"; elif [ -n \"$SSH_CONNECTION\" ]; then printf 'ssh:%s' \"$(hostname -s)\"; else printf ''; fi"
+    command = "if [ -n \"$LOVABLE_PROJECT_ID\" ]; then printf 'lovbox:%s' \"$(echo \"$LOVABLE_PROJECT_ID\" | cut -c1-8)\"; elif [ -n \"$SSH_CONNECTION\" ]; then printf 'ssh:%s' \"$(hostname -s)\"; fi"
     format = "[ $output ]($style) "
     style = "bold bg:magenta fg:white"
 
