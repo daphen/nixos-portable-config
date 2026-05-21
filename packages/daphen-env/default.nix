@@ -90,9 +90,22 @@ in pkgs.writeShellApplication {
   # sourcing fish (fish's loader checks several env vars optionally).
   text = ''
     set +u
-    export XDG_CONFIG_HOME="${configRoot}"
-    export GIT_CONFIG_GLOBAL="${configRoot}/gitconfig"
-    export STARSHIP_CONFIG="${configRoot}/starship/starship.toml"
+
+    # The configRoot derivation lives in /nix/store (read-only), but fish
+    # needs to *write* universal variables, history, etc. under
+    # XDG_CONFIG_HOME/fish/. So sync the read-only tree to a writable
+    # location (~/.config/daphen-env) and point env vars there. cp with
+    # --no-preserve=mode strips the read-only bits from store files;
+    # we leave already-extant non-source files (fish_variables, etc.)
+    # alone so they persist across sessions.
+    WRITABLE_CONFIG="$HOME/.config/daphen-env"
+    mkdir -p "$WRITABLE_CONFIG"
+    cp -rL --no-preserve=mode "${configRoot}"/. "$WRITABLE_CONFIG/"
+    chmod -R u+w "$WRITABLE_CONFIG"
+
+    export XDG_CONFIG_HOME="$WRITABLE_CONFIG"
+    export GIT_CONFIG_GLOBAL="$WRITABLE_CONFIG/gitconfig"
+    export STARSHIP_CONFIG="$WRITABLE_CONFIG/starship/starship.toml"
     export EDITOR="nvim"
     export VISUAL="nvim"
     exec ${pkgs.fish}/bin/fish -l "$@"
