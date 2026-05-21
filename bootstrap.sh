@@ -25,7 +25,17 @@
 set -euo pipefail
 
 readonly FLAKE_URL="${FLAKE_URL:-github:daphen/nixos-portable-config}"
-readonly HM_ATTR="${HM_ATTR:-daphen-remote}"
+
+# Pick the home-manager attr matching the current arch. The flake exposes
+# daphen-remote (x86_64) and daphen-remote-aarch64 (lovbox sandboxes are ARM).
+default_hm_attr() {
+  case "$(uname -m)" in
+    x86_64)        echo "daphen-remote" ;;
+    aarch64|arm64) echo "daphen-remote-aarch64" ;;
+    *)             echo "daphen-remote" ;;
+  esac
+}
+readonly HM_ATTR="${HM_ATTR:-$(default_hm_attr)}"
 
 info() { printf "\033[1;34m==>\033[0m %s\n" "$*"; }
 warn() { printf "\033[1;33m==>\033[0m %s\n" "$*" >&2; }

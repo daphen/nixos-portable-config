@@ -28,9 +28,11 @@
 
   outputs = { self, nixpkgs, home-manager, wrapper-modules, worktrunk, dotfiles, ... }@inputs:
     let
-      system = "x86_64-linux";
+      # Support both common Linux archs: proart is x86_64, lovbox sandboxes are aarch64.
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" ];
+      forAllSystems = f: nixpkgs.lib.genAttrs supportedSystems f;
 
-      pkgs = import nixpkgs {
+      pkgsFor = system: import nixpkgs {
         inherit system;
         config = {
           allowUnfree = true;
@@ -38,40 +40,47 @@
         };
       };
 
-      # The bundled neovim (three variants)
-      neovimPackages = import ./packages/neovim {
-        inherit pkgs inputs;
+      neovimPackagesFor = system: import ./packages/neovim {
+        pkgs = pkgsFor system;
+        inherit inputs;
         lib = nixpkgs.lib;
+      };
+
+      mkHomeConfig = system: home-manager.lib.homeManagerConfiguration {
+        pkgs = pkgsFor system;
+        extraSpecialArgs = { inherit inputs self; };
+        modules = [ ./home-modules/remote.nix ];
       };
 
     in {
       # ─────────────────────────────────────────────────────────────────
-      # Standalone packages
-      # ─────────────────────────────────────────────────────────────────
-      # Run the bundled nvim anywhere with Nix:
+      # Standalone packages — one set per system.
       #   nix run github:daphen/nixos-portable-config#neovim
-      packages.${system} = neovimPackages;
+      # ─────────────────────────────────────────────────────────────────
+      packages = forAllSystems neovimPackagesFor;
 
       # ─────────────────────────────────────────────────────────────────
-      # Portable home-manager configuration
-      # ─────────────────────────────────────────────────────────────────
-      # Apply on any Linux host:
+      # Portable home-manager configurations — one per system. bootstrap.sh
+      # picks the right attr from `uname -m`. Apply manually with:
       #   home-manager switch --flake github:daphen/nixos-portable-config#daphen-remote
-      homeConfigurations.daphen-remote = home-manager.lib.homeManagerConfiguration {
-        inherit pkgs;
-        extraSpecialArgs = { inherit inputs self; };
-        modules = [ ./home-modules/remote.nix ];
+      #   home-manager switch --flake github:daphen/nixos-portable-config#daphen-remote-aarch64
+      # ─────────────────────────────────────────────────────────────────
+      homeConfigurations = {
+        daphen-remote          = mkHomeConfig "x86_64-linux";
+        daphen-remote-aarch64  = mkHomeConfig "aarch64-linux";
       };
 
       # ─────────────────────────────────────────────────────────────────
       # Dev shell (for iterating on this flake locally)
       # ─────────────────────────────────────────────────────────────────
-      devShells.${system}.default = pkgs.mkShell {
-        packages = [
-          pkgs.nixpkgs-fmt
-          pkgs.nil
-          home-manager.packages.${system}.home-manager
-        ];
-      };
+      devShells = forAllSystems (system: let pkgs = pkgsFor system; in {
+        default = pkgs.mkShell {
+          packages = [
+            pkgs.nixpkgs-fmt
+            pkgs.nil
+            home-manager.packages.${system}.home-manager
+          ];
+        };
+      });
     };
 }
