@@ -59,10 +59,11 @@ let
     for variant in dark light; do
       cat > "$out/starship/$variant.toml" <<'SEOF'
     add_newline = true
-    # $custom.lovbox is explicit (some starship versions don't expand $custom
-    # to include unused/empty modules); falling back through the rest if it
-    # doesn't render.
-    format = "${custom.lovbox}$directory$character"
+    # ''${custom.lovbox} written in Nix produces the literal ${custom.lovbox}
+    # in the output TOML (the leading '' escapes Nix's antiquotation).
+    # Explicit reference because some starship versions don't expand $custom
+    # to include conditional modules.
+    format = "''${custom.lovbox}$directory$character"
 
     # custom.lovbox: magenta tag shown only inside SSH sessions, with the
     # project UUID's first 8 chars if we're in a lovable-on-lovable sandbox.
