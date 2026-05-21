@@ -41,6 +41,18 @@ let
       cp "${dotfiles}/starship/.config/starship/starship.toml" "$out/starship/light.toml"
     fi
 
+    # Sandbox-only tweak: truncate noisy branch names (lovable agents use
+    # uuid-suffixed branches like "edit/edt-3fc906fd-e730-…"). Insert
+    # truncation knobs right under each [git_branch] section header.
+    chmod -R u+w "$out/starship"
+    for variant in dark light; do
+      if [ -e "$out/starship/$variant.toml" ]; then
+        ${pkgs.gnused}/bin/sed -i '/^\[git_branch\]/a\
+    truncation_length = 16\
+    truncation_symbol = "…"' "$out/starship/$variant.toml"
+      fi
+    done
+
     # Override the dotfiles toggle_theme with a sandbox-friendly version.
     # The full theme-manager.sh expects niri/kitty/waybar to be running and
     # ships dozens of generated theme files — none of which exist remotely.
