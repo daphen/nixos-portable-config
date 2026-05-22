@@ -12,8 +12,10 @@ let
   # at it. Tools find their configs via well-known relative paths from
   # XDG_CONFIG_HOME (fish/, starship/, etc.). For tools that don't honor
   # XDG_CONFIG_HOME, we set tool-specific env vars explicitly below.
-  configRoot = pkgs.runCommand "daphen-env-config" { } ''
-    mkdir -p $out/fish $out/starship
+  configRoot = pkgs.runCommand "daphen-env-config" {
+    nativeBuildInputs = [ pkgs.python3 ];
+  } ''
+    mkdir -p $out/fish $out/starship $out/nvim/colors
 
     # Fish: config.fish, conf.d, functions, fish_plugins (completions/ isn't
     # in the dotfiles repo — fish autoloads built-in completions from the
@@ -45,78 +47,51 @@ let
       cp -r "${dotfiles}/claude/.claude/themes"/* "$out/claude/themes/" 2>/dev/null || true
     fi
 
-    # Starship: minimal sandbox prompt. We deliberately don't inherit the
-    # dotfiles config — that's tuned for full local context (git branch,
-    # node/bun/rust versions, etc.) which is mostly noise on a sandbox
-    # where you SSH in to do a focused task. Just a remote-indicator + the
-    # directory + prompt char. Same config for both theme_mode values (the
-    # writer below picks one regardless).
-    #
-    # The custom.lovbox module surfaces a magenta tag whenever we're in an
-    # SSH session, so it's obvious at a glance that a terminal is remote.
-    # If we're in a lovable-on-lovable sandbox, the tag includes the first
-    # 8 chars of the project UUID to distinguish multiple sandboxes.
-    # Light variant
-    cat > "$out/starship/light.toml" <<'SEOF'
-    add_newline = true
-    palette = "custom"
-    format = "$hostname$directory\n$character "
+    # Starship + nvim colorschemes: generated from the dotfiles' single
+    # source of truth (themes/colors.json + per-tool templates), driven by
+    # the same theme-processor.py used on proart. Means: edit colors.json,
+    # push dotfiles, next `nix run --refresh` in a sandbox picks up the
+    # new palette automatically — no manual sync.
+    THEMES=${dotfiles}/themes/.config/themes
+    for mode in light dark; do
+      python3 $THEMES/theme-processor.py \
+        $THEMES/templates/starship.template \
+        $THEMES/colors.json \
+        $mode \
+        $out/starship/$mode.toml
+      # The dotfiles template disables [hostname] (no SSH pill needed on
+      # proart). In a sandbox we want the opposite — drop the template's
+      # 2-line [hostname]/disabled=true block and append our own. sed `N`
+      # joins the next line so we delete both at once.
+      sed -i '/^\[hostname\]$/{N;d;}' $out/starship/$mode.toml
+      cat >> $out/starship/$mode.toml <<'HOSTEOF'
 
-    [palettes.custom]
-    bg     = "#FAF9F6"
-    prompt = "#E8EAED"
-    fg     = "#2D4A3D"
-    red    = "#A8333A"
-    green  = "#5E7270"
+[hostname]
+ssh_only = true
+disabled = false
+format = "[ $hostname ]($style)"
+style = "bold bg:red fg:bg"
+trim_at = "."
+HOSTEOF
+    done
 
-    [hostname]
-    ssh_only = true
-    format = "[ $hostname ]($style)"
-    style = "bold bg:blue fg:bg"
-    trim_at = "."
-    disabled = false
-
-    [directory]
-    truncation_length = 3
-    truncation_symbol = "…/"
-    format = "[ $path ]($style)"
-    style = "bold bg:prompt fg:fg"
-
-    [character]
-    success_symbol = "[❯](green)"
-    error_symbol = "[❯](red)"
-    SEOF
-
-    # Dark variant
-    cat > "$out/starship/dark.toml" <<'SEOF'
-    add_newline = true
-    palette = "custom"
-    format = "$hostname$directory\n$character "
-
-    [palettes.custom]
-    bg     = "#181818"
-    prompt = "#323A40"
-    fg     = "#EDEDED"
-    red    = "#FF7B72"
-    green  = "#97B5A6"
-
-    [hostname]
-    ssh_only = true
-    format = "[ $hostname ]($style)"
-    style = "bold bg:blue fg:bg"
-    trim_at = "."
-    disabled = false
-
-    [directory]
-    truncation_length = 3
-    truncation_symbol = "…/"
-    format = "[ $path ]($style)"
-    style = "bold bg:prompt fg:fg"
-
-    [character]
-    success_symbol = "[❯](green)"
-    error_symbol = "[❯](red)"
-    SEOF
+    # nvim colorscheme files — dual-theme lua, generated from the same
+    # palette. Land under $out/nvim/colors/, which the runtime wrapper
+    # copies to $WRITABLE_CONFIG/nvim/colors. Since the wrapper sets
+    # XDG_CONFIG_HOME to $WRITABLE_CONFIG, the wrapped nvim discovers
+    # them via standard runtimepath (XDG_CONFIG_HOME/nvim).
+    python3 $THEMES/theme-processor.py \
+      $THEMES/templates/nvim-dark.template \
+      $THEMES/colors.json \
+      dark \
+      $out/nvim/colors/custom-theme-dark.lua \
+      nvim
+    python3 $THEMES/theme-processor.py \
+      $THEMES/templates/nvim-light.template \
+      $THEMES/colors.json \
+      light \
+      $out/nvim/colors/custom-theme-light.lua \
+      nvim
 
     # lov-gh-auth: one-shot fish function to wire gh + git to YOUR identity
     # inside a sandbox. Shared lovbox sandboxes inject the org GitHub App
