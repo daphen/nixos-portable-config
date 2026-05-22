@@ -1,20 +1,15 @@
 { pkgs, inputs, lib }:
 
 let
-  # Shared formatters & linters — on PATH for conform.nvim, nvim-lint, and direct use
+  # Shared formatters & linters — on PATH for conform.nvim, nvim-lint, and direct use.
+  # Trimmed to what's actually used in the lovable monorepo (TS/Go/Nix/CSS).
+  # Re-add language-specific tools (stylua, black, ruff, alejandra, statix) if
+  # the sandbox workload changes.
   lintAndFormat = with pkgs; [
-    # Formatters
-    prettier
-    stylua
-    black
-    ruff
-    alejandra
-    nixpkgs-fmt
-
-    # Linters
-    eslint_d
-    shellcheck
-    statix
+    prettier      # TS / JS / CSS / JSON
+    nixpkgs-fmt   # Nix (single Nix formatter — alejandra dropped)
+    eslint_d      # TS / JS lint
+    shellcheck    # shell lint
   ];
 
   # Custom plugins not yet packaged in nixpkgs. Commits pinned from current
@@ -161,17 +156,20 @@ let
       # runtime (~80-185MB each), so pulling the whole set triples closure
       # size. Add back via overlay or extend this list if you need more.
       extraPackages = with pkgs; [
-        # Language servers
-        lua-language-server
-        nil                            # Nix
-        bash-language-server           # shell
-        typescript-language-server     # TS / JS / TSX / JSX
+        # Language servers — what's used in the lovable monorepo daily.
+        typescript-language-server     # TS / JS / TSX / JSX (`app/`, `web/`)
+        gopls                          # Go (`go/api`, `go/cli`, …)
         tailwindcss-language-server    # Tailwind class completion
-        vscode-langservers-extracted   # cssls/html/eslint/jsonls (React-adjacent)
-        gopls                          # Go
-        # pyright                      # Python — ~185MB, re-add if doing Python
-        # svelte-language-server       # ~110MB, re-add if doing Svelte
-        # emmet-ls                     # ~64MB, re-add if doing HTML expansion
+        vscode-langservers-extracted   # CSS / HTML / JSON
+        nil                            # Nix (devenv, flake.nix)
+
+        # Dropped to shrink the closure (re-add if you actually edit these
+        # in the sandbox):
+        #   lua-language-server        # ~30MB — only useful for nvim config editing
+        #   bash-language-server       # ~80MB Node — shellcheck linter is enough
+        #   pyright                    # ~185MB — Python work not in scope
+        #   svelte-language-server     # ~110MB — Svelte not in scope
+        #   emmet-ls                   # ~64MB — HTML expansion not in scope
 
         # Runtime deps the nvim config or plugins may invoke
         ripgrep
