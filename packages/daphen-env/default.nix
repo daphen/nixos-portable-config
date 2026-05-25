@@ -237,11 +237,22 @@ in pkgs.writeShellApplication {
       cp -f "$WRITABLE_CONFIG/starship/$THEME_MODE.toml" "$WRITABLE_CONFIG/starship/starship.toml"
     fi
 
+    # hunk: install hunkdiff via npm if not already present. Lovbox PVCs
+    # persist across sessions so this is a one-time ~15s cost per sandbox.
+    # Background install — don't block the shell startup. nvim's hunk-nvim
+    # plugin no-ops gracefully if `hunk` isn't on PATH yet.
+    if ! command -v hunk >/dev/null 2>&1; then
+      (npm i -g hunkdiff >/dev/null 2>&1 &) || true
+    fi
+
     export XDG_CONFIG_HOME="$WRITABLE_CONFIG"
     export GIT_CONFIG_GLOBAL="$WRITABLE_CONFIG/gitconfig"
     export STARSHIP_CONFIG="$WRITABLE_CONFIG/starship/starship.toml"
     export EDITOR="nvim"
     export VISUAL="nvim"
+    # hunk-nvim plugin gates on this. Enable only inside the sandbox
+    # (this wrapper is the sandbox entry point), never set locally.
+    export HUNK_NVIM_ENABLE=1
     exec ${pkgs.fish}/bin/fish -l "$@"
   '';
 }

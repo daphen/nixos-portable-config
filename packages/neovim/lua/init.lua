@@ -13,6 +13,11 @@ if vim.env.KITTY_SCROLLBACK_NVIM ~= "true" then
     auto_reload = true,
   })
 
+  -- hunk-nvim mirrors the cursor into a running `hunk diff --watch` TUI
+  -- when HUNK_NVIM_ENABLE is set in the env (daphen-env sets it inside
+  -- LoL sandboxes). No-op locally on proart.
+  require("hunk-nvim").setup()
+
   local map = vim.keymap.set
 
   -- Main interfaces
