@@ -93,6 +93,18 @@ HOSTEOF
       $out/nvim/colors/custom-theme-light.lua \
       nvim
 
+    # hunk diff viewer — both modes generated, wrapper picks the active one
+    # at startup based on $HOME/.config/theme_mode. Hunk has no live reload
+    # so toggling theme requires relaunching `hunk diff --watch`.
+    mkdir -p $out/hunk
+    for mode in light dark; do
+      python3 $THEMES/theme-processor.py \
+        $THEMES/templates/hunk-$mode.template \
+        $THEMES/colors.json \
+        $mode \
+        $out/hunk/$mode.toml
+    done
+
     # lov-gh-auth: one-shot fish function to wire gh + git to YOUR identity
     # inside a sandbox. Shared lovbox sandboxes inject the org GitHub App
     # bot's token by default, so PRs/pushes are attributed to the bot. Run
@@ -141,6 +153,15 @@ HOSTEOF
             set next "light"
         end
         echo "$next" > ~/.config/theme_mode
+        # Swap hunk's config so a relaunched `hunk diff --watch` picks up
+        # the new theme. Starship/nvim handle their own live-reload via
+        # config-reload watchers; hunk doesn't, but re-running the command
+        # in the third pane is cheap.
+        set -l hunk_src "$XDG_CONFIG_HOME/hunk/$next.toml"
+        if test -e "$hunk_src"
+            mkdir -p ~/.config/hunk
+            cp -f "$hunk_src" ~/.config/hunk/config.toml
+        end
         echo "→ theme_mode: $next"
     end
     FEOF
@@ -235,6 +256,14 @@ in pkgs.writeShellApplication {
     THEME_MODE=$(cat "$HOME/.config/theme_mode" 2>/dev/null || echo light)
     if [ -e "$WRITABLE_CONFIG/starship/$THEME_MODE.toml" ]; then
       cp -f "$WRITABLE_CONFIG/starship/$THEME_MODE.toml" "$WRITABLE_CONFIG/starship/starship.toml"
+    fi
+
+    # Materialize hunk config for the active theme. Hunk reads from
+    # ~/.config/hunk/config.toml literally (no XDG_CONFIG_HOME respect on
+    # node tooling), so write to the real path rather than $WRITABLE_CONFIG.
+    if [ -e "$WRITABLE_CONFIG/hunk/$THEME_MODE.toml" ]; then
+      mkdir -p "$HOME/.config/hunk"
+      cp -f "$WRITABLE_CONFIG/hunk/$THEME_MODE.toml" "$HOME/.config/hunk/config.toml"
     fi
 
     # hunk: install hunkdiff via npm if not already present. Lovbox PVCs
