@@ -295,23 +295,17 @@ in pkgs.writeShellApplication {
           # require >=0.14.0-beta. The stable 0.13.x rejects the block
           # silently. Switch to stable when the feature lands on main.
           #
-          # After the install, also patch the bundled Pierre theme files
-          # (the syntax highlighter hunk uses) with palette colors. Hunk's
-          # [custom_theme.syntax] block only reaches 2 of Pierre's 17
-          # semantic tokens via its reserved-color reverse-map; the other
-          # 15 (comment, function, type, class, variable, decorator, …)
-          # are unreachable from hunk config. Patching Pierre's .mjs theme
-          # files directly fills the gap.
+          # Note: hunk's [custom_theme.syntax] block accepts 9 keys but
+          # only 2 (keyword, string) actually flow through to the diff
+          # render via RESERVED_PIERRE_TOKEN_COLORS in hunk's main.js.
+          # The other 7 are defined but not applied. Patching Pierre's
+          # @pierre/theme/dist/*.mjs files didn't help — the wasm worker
+          # appears to ignore the runtime .mjs and use baked-in colors.
+          # So structural overrides (31 keys) work; syntax is paper/etc.
+          # defaults plus our 2 reserved-color overrides.
           (
             "$npm_bin" i -g hunkdiff@beta >/dev/null 2>&1 \
-              && chmod +x "$HOME/.npm-global/lib/node_modules/hunkdiff/bin/hunk.cjs" 2>/dev/null \
-              && PIERRE="$HOME/.npm-global/lib/node_modules/hunkdiff/node_modules/@pierre/theme/dist" \
-              && python3 ${dotfiles}/themes/.config/themes/pierre-patch.py light \
-                  "$PIERRE/pierre-light.mjs" \
-                  ${dotfiles}/themes/.config/themes/colors.json 2>/dev/null \
-              && python3 ${dotfiles}/themes/.config/themes/pierre-patch.py dark \
-                  "$PIERRE/pierre-dark.mjs" \
-                  ${dotfiles}/themes/.config/themes/colors.json 2>/dev/null
+              && chmod +x "$HOME/.npm-global/lib/node_modules/hunkdiff/bin/hunk.cjs" 2>/dev/null
           ) &
           break
         fi
