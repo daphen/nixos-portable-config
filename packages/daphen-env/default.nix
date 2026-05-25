@@ -294,9 +294,24 @@ in pkgs.writeShellApplication {
           # Beta channel — custom themes via [custom_theme] in config.toml
           # require >=0.14.0-beta. The stable 0.13.x rejects the block
           # silently. Switch to stable when the feature lands on main.
+          #
+          # After the install, also patch the bundled Pierre theme files
+          # (the syntax highlighter hunk uses) with palette colors. Hunk's
+          # [custom_theme.syntax] block only reaches 2 of Pierre's 17
+          # semantic tokens via its reserved-color reverse-map; the other
+          # 15 (comment, function, type, class, variable, decorator, …)
+          # are unreachable from hunk config. Patching Pierre's .mjs theme
+          # files directly fills the gap.
           (
             "$npm_bin" i -g hunkdiff@beta >/dev/null 2>&1 \
-              && chmod +x "$HOME/.npm-global/lib/node_modules/hunkdiff/bin/hunk.cjs" 2>/dev/null
+              && chmod +x "$HOME/.npm-global/lib/node_modules/hunkdiff/bin/hunk.cjs" 2>/dev/null \
+              && PIERRE="$HOME/.npm-global/lib/node_modules/hunkdiff/node_modules/@pierre/theme/dist" \
+              && python3 ${dotfiles}/themes/.config/themes/pierre-patch.py light \
+                  "$PIERRE/pierre-light.mjs" \
+                  ${dotfiles}/themes/.config/themes/colors.json 2>/dev/null \
+              && python3 ${dotfiles}/themes/.config/themes/pierre-patch.py dark \
+                  "$PIERRE/pierre-dark.mjs" \
+                  ${dotfiles}/themes/.config/themes/colors.json 2>/dev/null
           ) &
           break
         fi
