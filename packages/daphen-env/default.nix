@@ -238,11 +238,22 @@ in pkgs.writeShellApplication {
     fi
 
     # hunk: install hunkdiff via npm if not already present. Lovbox PVCs
-    # persist across sessions so this is a one-time ~15s cost per sandbox.
-    # Background install — don't block the shell startup. nvim's hunk-nvim
+    # persist across sessions so this is a one-time ~10s cost per sandbox.
+    # Background install — don't block shell startup. nvim's hunk-nvim
     # plugin no-ops gracefully if `hunk` isn't on PATH yet.
-    if ! command -v hunk >/dev/null 2>&1; then
-      (npm i -g hunkdiff >/dev/null 2>&1 &) || true
+    #
+    # writeShellApplication restricts PATH to only the runtimeInputs
+    # listed below, which intentionally doesn't include nodejs (would
+    # add ~100MB to the closure). So `npm` isn't directly on PATH here
+    # even though fish will see the sandbox's system npm afterwards.
+    # Probe well-known sandbox-image npm paths to bootstrap.
+    if ! [ -x "$HOME/.npm-global/bin/hunk" ]; then
+      for npm_bin in /nix/var/nix/profiles/default/bin/npm /usr/bin/npm /usr/local/bin/npm; do
+        if [ -x "$npm_bin" ]; then
+          ("$npm_bin" i -g hunkdiff >/dev/null 2>&1 &) || true
+          break
+        fi
+      done
     fi
 
     export XDG_CONFIG_HOME="$WRITABLE_CONFIG"
