@@ -250,7 +250,13 @@ in pkgs.writeShellApplication {
     if ! [ -x "$HOME/.npm-global/bin/hunk" ]; then
       for npm_bin in /nix/var/nix/profiles/default/bin/npm /usr/bin/npm /usr/local/bin/npm; do
         if [ -x "$npm_bin" ]; then
-          ("$npm_bin" i -g hunkdiff >/dev/null 2>&1 &) || true
+          # hunkdiff's published tarball ships hunk.cjs without exec bits
+          # and `npm i -g` doesn't chmod the target — only the bin/ symlink.
+          # chmod the entry script after install so the shebang can run.
+          (
+            "$npm_bin" i -g hunkdiff >/dev/null 2>&1 \
+              && chmod +x "$HOME/.npm-global/lib/node_modules/hunkdiff/bin/hunk.cjs" 2>/dev/null
+          ) &
           break
         fi
       done
