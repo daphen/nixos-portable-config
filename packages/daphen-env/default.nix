@@ -156,9 +156,12 @@ HOSTEOF
         # Swap hunk's config so a relaunched `hunk diff --watch` picks up
         # the new theme. Starship/nvim handle their own live-reload via
         # config-reload watchers; hunk doesn't, but re-running the command
-        # in the third pane is cheap.
+        # in the third pane is cheap. Hunk respects XDG_CONFIG_HOME, so
+        # write to both that path AND ~/.config/hunk to cover both cases.
         set -l hunk_src "$XDG_CONFIG_HOME/hunk/$next.toml"
         if test -e "$hunk_src"
+            mkdir -p "$XDG_CONFIG_HOME/hunk"
+            cp -f "$hunk_src" "$XDG_CONFIG_HOME/hunk/config.toml"
             mkdir -p ~/.config/hunk
             cp -f "$hunk_src" ~/.config/hunk/config.toml
         end
@@ -258,10 +261,16 @@ in pkgs.writeShellApplication {
       cp -f "$WRITABLE_CONFIG/starship/$THEME_MODE.toml" "$WRITABLE_CONFIG/starship/starship.toml"
     fi
 
-    # Materialize hunk config for the active theme. Hunk reads from
-    # ~/.config/hunk/config.toml literally (no XDG_CONFIG_HOME respect on
-    # node tooling), so write to the real path rather than $WRITABLE_CONFIG.
+    # Materialize hunk config for the active theme. Hunk DOES respect
+    # XDG_CONFIG_HOME — verified empirically: with XDG_CONFIG_HOME set,
+    # hunk looks at $XDG_CONFIG_HOME/hunk/config.toml and ignores
+    # $HOME/.config/hunk/config.toml entirely. Earlier comment claiming
+    # the opposite was wrong. Write to both paths so the config is found
+    # regardless of whether XDG_CONFIG_HOME is set (e.g. plain ssh into
+    # the sandbox before daphen-env exports its env).
     if [ -e "$WRITABLE_CONFIG/hunk/$THEME_MODE.toml" ]; then
+      mkdir -p "$WRITABLE_CONFIG/hunk"
+      cp -f "$WRITABLE_CONFIG/hunk/$THEME_MODE.toml" "$WRITABLE_CONFIG/hunk/config.toml"
       mkdir -p "$HOME/.config/hunk"
       cp -f "$WRITABLE_CONFIG/hunk/$THEME_MODE.toml" "$HOME/.config/hunk/config.toml"
     fi
@@ -282,8 +291,11 @@ in pkgs.writeShellApplication {
           # hunkdiff's published tarball ships hunk.cjs without exec bits
           # and `npm i -g` doesn't chmod the target — only the bin/ symlink.
           # chmod the entry script after install so the shebang can run.
+          # Beta channel — custom themes via [custom_theme] in config.toml
+          # require >=0.14.0-beta. The stable 0.13.x rejects the block
+          # silently. Switch to stable when the feature lands on main.
           (
-            "$npm_bin" i -g hunkdiff >/dev/null 2>&1 \
+            "$npm_bin" i -g hunkdiff@beta >/dev/null 2>&1 \
               && chmod +x "$HOME/.npm-global/lib/node_modules/hunkdiff/bin/hunk.cjs" 2>/dev/null
           ) &
           break
