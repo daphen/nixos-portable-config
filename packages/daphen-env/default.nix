@@ -215,6 +215,7 @@ HOSTEOF
     delta
     fastfetch
     openssh
+    sshfs
   ];
 
 in pkgs.writeShellApplication {
