@@ -215,7 +215,6 @@ HOSTEOF
     delta
     fastfetch
     openssh
-    rsync
   ];
 
 in pkgs.writeShellApplication {
