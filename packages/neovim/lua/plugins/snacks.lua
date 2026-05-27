@@ -2,20 +2,40 @@
 -- init commit. Used by both <leader>gC and <C-f>. Falls back to repo root
 -- if the init commit grep returns nothing.
 local function open_changed_files_picker()
-	local base = vim.fn.systemlist(
+	-- Source-agnostic base/work resolution, same priority chain as
+	-- hunk-nvim/signs.lua: LoL user-project init → branch fork point → root.
+	local base, work
+	local init_candidate = vim.fn.systemlist(
 		"git log --all --grep='\\[skip lovable\\] Initialize Lovable project' --format=%H"
-	)[1]
-	if not base or base == "" then
-		base = vim.fn.systemlist("git rev-list --max-parents=0 HEAD")[1]
+	)
+	if #init_candidate > 0 then
+		local candidate = init_candidate[#init_candidate]
+		local parents = vim.fn.systemlist("git rev-parse " .. candidate .. "^@ 2>/dev/null")
+		if vim.v.shell_error == 0 and #parents == 0 then
+			base = candidate
+			work = vim.fn.systemlist(
+				"git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/daphen"
+			)[1] or "HEAD"
+		end
 	end
-	local work = vim.fn.systemlist(
-		"git for-each-ref --sort=-committerdate --format='%(refname:short)' refs/heads/daphen"
-	)[1] or "HEAD"
+	if not base then
+		for _, trunk in ipairs({ "origin/main", "origin/master", "main", "master" }) do
+			local mb = vim.fn.systemlist("git merge-base HEAD " .. trunk .. " 2>/dev/null")
+			if vim.v.shell_error == 0 and #mb > 0 and mb[1] ~= "" then
+				base, work = mb[1], "HEAD"
+				break
+			end
+		end
+	end
+	if not base then
+		base = vim.fn.systemlist("git rev-list --max-parents=0 HEAD")[1]
+		work = "HEAD"
+	end
 	if not base or base == "" then
 		vim.notify("Couldn't infer base commit", vim.log.levels.ERROR)
 		return
 	end
-	local files = vim.fn.systemlist("git diff --name-only " .. base .. ".." .. work)
+	local files = vim.fn.systemlist("git diff --name-only " .. base .. " " .. work)
 	if #files == 0 then
 		vim.notify("No changes vs " .. base:sub(1, 8), vim.log.levels.INFO)
 		return
@@ -34,12 +54,9 @@ local function open_changed_files_picker()
 end
 
 return {
-	"snacks.nvim",
-	-- Original had priority=1000 under lazy.nvim to load before colorscheme.
-	-- lz.n has no priority — load eagerly so Snacks.* is available to other
-	-- plugins' after-hooks that reference it.
-	lazy = false,
-	after = function()
+	"folke/snacks.nvim",
+	priority = 1000,
+	config = function()
 		local utils = require("utils")
 		local root_markers = { "package.json", ".git", "tsconfig.json", "Cargo.toml", "pyproject.toml" }
 
@@ -57,7 +74,15 @@ return {
 			bigfile = { enabled = true },
 			dashboard = { enabled = true },
 			indent = { enabled = false },
-			input = { enabled = false },
+			input = {
+				enabled = true,
+				win = {
+					relative = "cursor",
+					row = 1,
+					col = 0,
+					border = "rounded",
+				},
+			},
 			words = { enabled = false },
 			notifier = { enabled = false },
 			quickfile = { enabled = true },
@@ -132,7 +157,6 @@ return {
 		{ "<leader>fh", function() Snacks.picker.help() end, desc = "Search Help" },
 		{ "<leader>fd", function() Snacks.picker.diagnostics() end, desc = "Search Diagnostics" },
 		{ "<leader>fb", function() Snacks.picker.buffers() end, desc = "Find Buffers" },
-		{ "<C-f>", open_changed_files_picker, desc = "Changed files (daphen vs base)", mode = "n" },
 		{ "<leader>fp", function() Snacks.picker.projects() end, desc = "Projects" },
 		{ "<leader>fr", function() Snacks.picker.lsp_references() end, desc = "LSP References" },
 		{ "<leader>fj", function() Snacks.picker.jumps() end, desc = "Search Jumplist" },
@@ -156,6 +180,7 @@ return {
 			end, desc = "Git Commits (daphen branch)",
 		},
 		{ "<leader>gC", open_changed_files_picker, desc = "Changed files (daphen vs base)" },
+		{ "<C-f>", open_changed_files_picker, desc = "Changed files (daphen vs base)", mode = "n" },
 		{ "<leader>u", function() Snacks.picker.undo() end, desc = "Undo History" },
 		{ "<C-n>", function() Snacks.words.jump(vim.v.count1) end, desc = "Next Reference", mode = { "n", "t" } },
 		{ "<C-p>", function() Snacks.words.jump(-vim.v.count1) end, desc = "Prev Reference", mode = { "n", "t" } },
