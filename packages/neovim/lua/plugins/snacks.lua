@@ -90,8 +90,8 @@ end
 
 return {
 	"folke/snacks.nvim",
-	priority = 1000,
-	config = function()
+	lazy = false,
+	after = function()
 		local utils = require("utils")
 		local root_markers = { "package.json", ".git", "tsconfig.json", "Cargo.toml", "pyproject.toml" }
 
