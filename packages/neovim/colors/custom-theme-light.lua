@@ -26,42 +26,43 @@ local c = {
   fg_subtle = "#636463",
 
   -- Accent colors
-  red = "#A8333A",
+  red = "#7c3438",
   orange = "#e16511",
-  yellow = "#69756C",
+  yellow = "#df9001",
   green = "#5E7270",
-  cyan = "#397446",
-  blue = "#286983",
-  purple = "#eb2146",
+  cyan = "#243560",
+  blue = "#396171",
+  sky = "#0284C7",
+  purple = "#2a618d",
   pink = "#516088",
 
   -- Semantic colors
-  error = "#A8333A",
-  warning = "#69756C",
+  error = "#7c3438",
+  warning = "#df9001",
   success = "#5E7270",
-  info = "#397446",
-  keyword = "#A8333A",
-  command = "#286983",
-  operator = "#397446",
+  info = "#243560",
+  keyword = "#396171",
+  command = "#396171",
+  operator = "#243560",
   comment = "#6B6E7A",
-  string = "#397446",
-  ["function"] = "#286983",
-  type = "#397446",
-  number = "#A8333A",
-  boolean = "#eb2146",
+  string = "#396171",
+  ["function"] = "#e16511",
+  type = "#2a618d",
+  number = "#7c3438",
+  boolean = "#2a618d",
   variable = "#2D4A3D",
-  property = "#397446",
+  property = "#243560",
   method = "#e16511",
-  tag = "#286983",
-  attribute = "#397446",
+  tag = "#e16511",
+  attribute = "#243560",
 
   -- Highlights
   highlight_low = "#E8EAED",
   highlight_med = "#D5D8DD",
   highlight_high = "#C2C6CC",
-  highlight_succ = "#E2EAE4",
-  highlight_warn = "#D8D5C5",
-  highlight_err = "#EED8D0",
+  highlight_succ = "#DDF4FF",
+  highlight_warn = "#FED7AA",
+  highlight_err = "#FFF1E5",
 
   -- Special
   cursor = "#FF570D",
@@ -374,14 +375,18 @@ hl("MasonHighlightBlockSecondary", {})
 hl("MasonHighlightBlockBoldSecondary", {})
 
 -- lewis6991/gitsigns.nvim
-hl("GitSignsAdd", { fg = c.green })
-hl("GitSignsChange", { fg = c.yellow })
+-- Aligned with new diff bg palette (sky blue add, orange change, peach delete):
+-- gutter signs use a saturated counterpart of the line bg's hue family.
+-- Add uses accent.sky (matches the highlight_succ bg family) — accent.blue
+-- is too steel/cold here.
+hl("GitSignsAdd", { fg = c.sky })
+hl("GitSignsChange", { fg = c.orange })
 hl("GitSignsDelete", { fg = c.red })
 hl("GitSignsChangedelete", { link = "GitSignsChange" })
 hl("GitSignsTopdelete", { link = "GitSignsDelete" })
 hl("GitSignsUntracked", { link = "NonText" })
-hl("GitSignsStagedAdd", { fg = c.green })
-hl("GitSignsStagedChange", { fg = c.yellow })
+hl("GitSignsStagedAdd", { fg = c.sky })
+hl("GitSignsStagedChange", { fg = c.orange })
 hl("GitSignsStagedDelete", { fg = c.red })
 hl("GitSignsStagedChangedelete", { link = "GitSignsStagedChange" })
 hl("GitSignsStagedTopdelete", { link = "GitSignsStagedDelete" })
@@ -396,6 +401,11 @@ hl("GitSignsChangeLnInline", { link = "Changed" })
 hl("GitSignsDeleteVirtLn", { link = "Removed" })
 hl("GitSignsDeleteVirtLnInLine", { link = "Removed" })
 hl("GitSignsVirtLnum", { link = "LineNr" })
+-- Whole-line linehl groups (used by hunk-nvim/signs.lua). bg-only so the
+-- buffer's syntax fg still shows through on changed lines.
+hl("GitSignsAddLn", { bg = c.highlight_succ })
+hl("GitSignsChangeLn", { bg = c.highlight_warn })
+hl("GitSignsDeleteLn", { bg = c.highlight_err })
 
 -- stevearc/aerial.nvim
 hl("AerialLine", { bg = c.bg_selection })
