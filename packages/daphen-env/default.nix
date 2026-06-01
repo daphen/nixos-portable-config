@@ -93,18 +93,6 @@ HOSTEOF
       $out/nvim/colors/custom-theme-light.lua \
       nvim
 
-    # hunk diff viewer — both modes generated, wrapper picks the active one
-    # at startup based on $HOME/.config/theme_mode. Hunk has no live reload
-    # so toggling theme requires relaunching `hunk diff --watch`.
-    mkdir -p $out/hunk
-    for mode in light dark; do
-      python3 $THEMES/theme-processor.py \
-        $THEMES/templates/hunk-$mode.template \
-        $THEMES/colors.json \
-        $mode \
-        $out/hunk/$mode.toml
-    done
-
     # lov-gh-auth: one-shot fish function to wire gh + git to YOUR identity
     # inside a sandbox. Shared lovbox sandboxes inject the org GitHub App
     # bot's token by default, so PRs/pushes are attributed to the bot. Run
@@ -153,18 +141,6 @@ HOSTEOF
             set next "light"
         end
         echo "$next" > ~/.config/theme_mode
-        # Swap hunk's config so a relaunched `hunk diff --watch` picks up
-        # the new theme. Starship/nvim handle their own live-reload via
-        # config-reload watchers; hunk doesn't, but re-running the command
-        # in the third pane is cheap. Hunk respects XDG_CONFIG_HOME, so
-        # write to both that path AND ~/.config/hunk to cover both cases.
-        set -l hunk_src "$XDG_CONFIG_HOME/hunk/$next.toml"
-        if test -e "$hunk_src"
-            mkdir -p "$XDG_CONFIG_HOME/hunk"
-            cp -f "$hunk_src" "$XDG_CONFIG_HOME/hunk/config.toml"
-            mkdir -p ~/.config/hunk
-            cp -f "$hunk_src" ~/.config/hunk/config.toml
-        end
         echo "→ theme_mode: $next"
     end
     FEOF
@@ -261,65 +237,11 @@ in pkgs.writeShellApplication {
       cp -f "$WRITABLE_CONFIG/starship/$THEME_MODE.toml" "$WRITABLE_CONFIG/starship/starship.toml"
     fi
 
-    # Materialize hunk config for the active theme. Hunk DOES respect
-    # XDG_CONFIG_HOME — verified empirically: with XDG_CONFIG_HOME set,
-    # hunk looks at $XDG_CONFIG_HOME/hunk/config.toml and ignores
-    # $HOME/.config/hunk/config.toml entirely. Earlier comment claiming
-    # the opposite was wrong. Write to both paths so the config is found
-    # regardless of whether XDG_CONFIG_HOME is set (e.g. plain ssh into
-    # the sandbox before daphen-env exports its env).
-    if [ -e "$WRITABLE_CONFIG/hunk/$THEME_MODE.toml" ]; then
-      mkdir -p "$WRITABLE_CONFIG/hunk"
-      cp -f "$WRITABLE_CONFIG/hunk/$THEME_MODE.toml" "$WRITABLE_CONFIG/hunk/config.toml"
-      mkdir -p "$HOME/.config/hunk"
-      cp -f "$WRITABLE_CONFIG/hunk/$THEME_MODE.toml" "$HOME/.config/hunk/config.toml"
-    fi
-
-    # hunk: install hunkdiff via npm if not already present. Lovbox PVCs
-    # persist across sessions so this is a one-time ~10s cost per sandbox.
-    # Background install — don't block shell startup. nvim's hunk-nvim
-    # plugin no-ops gracefully if `hunk` isn't on PATH yet.
-    #
-    # writeShellApplication restricts PATH to only the runtimeInputs
-    # listed below, which intentionally doesn't include nodejs (would
-    # add ~100MB to the closure). So `npm` isn't directly on PATH here
-    # even though fish will see the sandbox's system npm afterwards.
-    # Probe well-known sandbox-image npm paths to bootstrap.
-    if ! [ -x "$HOME/.npm-global/bin/hunk" ]; then
-      for npm_bin in /nix/var/nix/profiles/default/bin/npm /usr/bin/npm /usr/local/bin/npm; do
-        if [ -x "$npm_bin" ]; then
-          # hunkdiff's published tarball ships hunk.cjs without exec bits
-          # and `npm i -g` doesn't chmod the target — only the bin/ symlink.
-          # chmod the entry script after install so the shebang can run.
-          # Beta channel — custom themes via [custom_theme] in config.toml
-          # require >=0.14.0-beta. The stable 0.13.x rejects the block
-          # silently. Switch to stable when the feature lands on main.
-          #
-          # Note: hunk's [custom_theme.syntax] block accepts 9 keys but
-          # only 2 (keyword, string) actually flow through to the diff
-          # render via RESERVED_PIERRE_TOKEN_COLORS in hunk's main.js.
-          # The other 7 are defined but not applied. Patching Pierre's
-          # @pierre/theme/dist/*.mjs files didn't help — the wasm worker
-          # appears to ignore the runtime .mjs and use baked-in colors.
-          # So structural overrides (31 keys) work; syntax is paper/etc.
-          # defaults plus our 2 reserved-color overrides.
-          (
-            "$npm_bin" i -g hunkdiff@beta >/dev/null 2>&1 \
-              && chmod +x "$HOME/.npm-global/lib/node_modules/hunkdiff/bin/hunk.cjs" 2>/dev/null
-          ) &
-          break
-        fi
-      done
-    fi
-
     export XDG_CONFIG_HOME="$WRITABLE_CONFIG"
     export GIT_CONFIG_GLOBAL="$WRITABLE_CONFIG/gitconfig"
     export STARSHIP_CONFIG="$WRITABLE_CONFIG/starship/starship.toml"
     export EDITOR="nvim"
     export VISUAL="nvim"
-    # hunk-nvim plugin gates on this. Enable only inside the sandbox
-    # (this wrapper is the sandbox entry point), never set locally.
-    export HUNK_NVIM_ENABLE=1
     exec ${pkgs.fish}/bin/fish -l "$@"
   '';
 }
