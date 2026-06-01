@@ -89,7 +89,7 @@ local function open_changed_files_picker()
 end
 
 return {
-	"folke/snacks.nvim",
+	"snacks.nvim",
 	lazy = false,
 	after = function()
 		local utils = require("utils")
