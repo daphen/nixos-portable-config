@@ -16,30 +16,6 @@ let
   # lazy-lock.json. Hashes are lib.fakeHash placeholders — Nix will tell us
   # the real hash on first build; update them then.
   customPlugins = {
-    "99" = pkgs.vimUtils.buildVimPlugin {
-      pname = "99";
-      version = "unstable-2026-04";
-      src = pkgs.fetchFromGitHub {
-        owner = "ThePrimeagen";
-        repo = "99";
-        rev = "ec9872f7df7f4eb8b319719c1c253eb3ea8877ed";
-        hash = "sha256-z8hafm8EWS7dXoDXnZ/1ddvtpWKVUtJfvQmWT4zXIdg=";
-      };
-      doCheck = false;
-    };
-
-    jumppack = pkgs.vimUtils.buildVimPlugin {
-      pname = "jumppack";
-      version = "unstable-2026-04";
-      src = pkgs.fetchFromGitHub {
-        owner = "suliatis";
-        repo = "jumppack";
-        rev = "68113c3ddea4fdedab6a351b937e23fc18ad6f01";
-        hash = "sha256-AfBrVnL69XkGkXxBZhAK2renUESeIKHb6CXBcW2fdDE=";
-      };
-      doCheck = false;
-    };
-
     lualine-macro-recording = pkgs.vimUtils.buildVimPlugin {
       pname = "lualine-macro-recording";
       version = "unstable-2026-04";
@@ -63,57 +39,6 @@ let
       };
       doCheck = false;
     };
-
-    minty = pkgs.vimUtils.buildVimPlugin {
-      pname = "minty";
-      version = "unstable-2026-04";
-      src = pkgs.fetchFromGitHub {
-        owner = "nvzone";
-        repo = "minty";
-        rev = "aafc9e8e0afe6bf57580858a2849578d8d8db9e0";
-        hash = "sha256-jdz0cR1uz1EdxFCuxndsK9gyTZ2jg8wdYA0v33SevOg=";
-      };
-      doCheck = false;
-    };
-
-    ripple = pkgs.vimUtils.buildVimPlugin {
-      pname = "ripple-nvim";
-      version = "unstable-2026-04";
-      src = pkgs.fetchFromGitHub {
-        owner = "ian-howell";
-        repo = "ripple.nvim";
-        rev = "8009919a22bee1ae84b7e6b24c6a05e777644761";
-        hash = "sha256-Meb3h/gJkYajw1FIkUsZkuWTvwirHrRK/Se4WTlPP3s=";
-      };
-      doCheck = false;
-    };
-
-    vim-maximizer = pkgs.vimUtils.buildVimPlugin {
-      pname = "vim-maximizer";
-      version = "unstable-2026-04";
-      src = pkgs.fetchFromGitHub {
-        owner = "szw";
-        repo = "vim-maximizer";
-        rev = "2e54952fe91e140a2e69f35f22131219fcd9c5f1";
-        hash = "sha256-+VPcMn4NuxLRpY1nXz7APaXlRQVZD3Y7SprB/hvNKww=";
-      };
-      doCheck = false;
-    };
-
-    volt = pkgs.vimUtils.buildVimPlugin {
-      pname = "volt";
-      version = "unstable-2026-04";
-      src = pkgs.fetchFromGitHub {
-        owner = "nvzone";
-        repo = "volt";
-        rev = "620de1321f275ec9d80028c68d1b88b409c0c8b1";
-        hash = "sha256-5Xao1+QXZOvqwCXL6zWpckJPO1LDb8I7wtikMRFQ3Jk=";
-      };
-      doCheck = false;
-    };
-
-    # Local ai-tracker plugin (vendored from dotfiles) — reference as a regular
-    # lua require path rather than a plugin. See lua/ai-tracker/.
   };
 
   # Neovim wrapper module definition.
@@ -203,7 +128,6 @@ let
             typescript vim yaml
           ]))
           p.nvim-treesitter-textobjects
-          p.vim-tmux-navigator
 
           # Completion (needed early so cmp integrations work)
           p.nvim-cmp
@@ -234,20 +158,11 @@ let
             customPlugins.lualine-so-fancy
             p.snacks-nvim
             p.markview-nvim
-            p.render-markdown-nvim
-            p.neo-tree-nvim
-            p.fyler-nvim
-            p.floaterm
-            customPlugins.volt
 
             # Editing
             p.nvim-autopairs
             p.nvim-highlight-colors
             p.mini-nvim
-            p.quicker-nvim
-            customPlugins.minty
-            customPlugins.ripple
-            customPlugins.vim-maximizer
 
             # Git
             p.gitsigns-nvim
@@ -259,17 +174,8 @@ let
             p.conform-nvim
             p.nvim-lint
 
-            # Navigation
-            customPlugins.jumppack
-
-            # Sessions
-            p.auto-session
-
             # Terminals / scrollback
             p.kitty-scrollback-nvim
-
-            # AI tooling
-            customPlugins."99"
           ];
         };
       };
