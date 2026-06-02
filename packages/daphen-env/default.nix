@@ -59,11 +59,12 @@ let
         $THEMES/colors.json \
         $mode \
         $out/starship/$mode.toml
-      # Sandbox prompt: collapse the format to "cloud + directory" inside
-      # the rounded bar, followed by the prompt char on the next line.
-      # No branch, no language versions, no clock — they're noise when
-      # you're already inside a specific sandbox. The template's module
-      # configs stay intact (palette consistent); only `format` is replaced.
+      # Sandbox prompt: insert a minimal top-level `format` (cloud + dir +
+      # prompt char, one line) BEFORE the first [section] header. The
+      # template's existing `format` sits inside [palettes.custom] and is
+      # silently ignored by starship (TOML scoping bug, kept as-is to avoid
+      # changing proart's prompt). Our injected one takes effect because
+      # it's at root scope.
       python3 - "$out/starship/$mode.toml" <<'PYEOF'
 import re, sys
 path = sys.argv[1]
@@ -71,11 +72,13 @@ with open(path) as f:
     content = f.read()
 new_format = '''format = """
 [](fg:prompt)\\
-[ 3  ](bg:prompt fg:fg_muted)\\
+[   ](bg:prompt fg:fg_muted)\\
 $directory\\
 [](fg:prompt) \\
-$character"""'''
-content = re.sub(r'format = """[\s\S]*?"""', new_format, content, count=1)
+$character"""
+
+'''
+content = re.sub(r'^(\[)', new_format + r'\1', content, count=1, flags=re.MULTILINE)
 with open(path, 'w') as f:
     f.write(content)
 PYEOF
