@@ -21,5 +21,15 @@ $character"""
 
 content = re.sub(r'^(\[)', new_format + r'\1', content, count=1, flags=re.MULTILINE)
 
+# Sandbox is single-project: `~` substitution > repo-root truncation.
+# Disable truncate_to_repo so the path shows as ~/lovable, not .../lovable.
+content = re.sub(
+    r'^(\[directory\]\n)',
+    r'\1truncate_to_repo = false\n',
+    content,
+    count=1,
+    flags=re.MULTILINE,
+)
+
 with open(path, 'w') as f:
     f.write(content)
