@@ -59,14 +59,26 @@ let
         $THEMES/colors.json \
         $mode \
         $out/starship/$mode.toml
-      # SANDBOX_LABEL renders the short-name (set by lovssh) inside the
-      # prompt bar. lovssh exports it before exec'ing daphen-env; we inject
-      # `default = "ssh"` into the existing template block so manual SSH
-      # sessions without lovssh still surface something compact instead of
-      # falling back to the pod name. (sed -a adds the default line right
-      # after the section header; can't append a second block — TOML rejects
-      # duplicate table names.)
-      sed -i '/^\[env_var\.SANDBOX_LABEL\]/a default = "ssh"' $out/starship/$mode.toml
+      # Sandbox prompt: collapse the format to "cloud + directory" inside
+      # the rounded bar, followed by the prompt char on the next line.
+      # No branch, no language versions, no clock — they're noise when
+      # you're already inside a specific sandbox. The template's module
+      # configs stay intact (palette consistent); only `format` is replaced.
+      python3 - "$out/starship/$mode.toml" <<'PYEOF'
+import re, sys
+path = sys.argv[1]
+with open(path) as f:
+    content = f.read()
+new_format = '''format = """
+[](fg:prompt)\\
+[ 3  ](bg:prompt fg:fg_muted)\\
+$directory\\
+[](fg:prompt) \\
+$character"""'''
+content = re.sub(r'format = """[\s\S]*?"""', new_format, content, count=1)
+with open(path, 'w') as f:
+    f.write(content)
+PYEOF
     done
 
     # nvim colorscheme files — dual-theme lua, generated from the same
