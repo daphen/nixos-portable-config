@@ -59,20 +59,15 @@ let
         $THEMES/colors.json \
         $mode \
         $out/starship/$mode.toml
-      # The dotfiles template disables [hostname] (no SSH pill needed on
-      # proart). In a sandbox we want the opposite — drop the template's
-      # 2-line [hostname]/disabled=true block and append our own. sed `N`
-      # joins the next line so we delete both at once.
-      sed -i '/^\[hostname\]$/{N;d;}' $out/starship/$mode.toml
-      cat >> $out/starship/$mode.toml <<'HOSTEOF'
+      # SANDBOX_LABEL renders the short-name (set by lovssh) inside the
+      # prompt bar. lovssh exports it before exec'ing daphen-env; we add a
+      # default of "ssh" here so manual SSH sessions without lovssh still
+      # surface something compact instead of falling back to the pod name.
+      cat >> $out/starship/$mode.toml <<'LABELEOF'
 
-[hostname]
-ssh_only = true
-disabled = false
-format = "[ $hostname ]($style)"
-style = "bold bg:red fg:bg"
-trim_at = "."
-HOSTEOF
+[env_var.SANDBOX_LABEL]
+default = "ssh"
+LABELEOF
     done
 
     # nvim colorscheme files — dual-theme lua, generated from the same
