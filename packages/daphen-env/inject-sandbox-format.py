@@ -12,7 +12,7 @@ with open(path) as f:
 
 new_format = '''format = """
 [](fg:prompt)\\
-[   ](bg:prompt fg:fg_muted)\\
+[   ](bg:prompt fg:fg_muted)\\
 $directory\\
 [](fg:prompt) \\
 $character"""
