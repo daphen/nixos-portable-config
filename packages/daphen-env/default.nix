@@ -65,23 +65,7 @@ let
       # silently ignored by starship (TOML scoping bug, kept as-is to avoid
       # changing proart's prompt). Our injected one takes effect because
       # it's at root scope.
-      python3 - "$out/starship/$mode.toml" <<'PYEOF'
-import re, sys
-path = sys.argv[1]
-with open(path) as f:
-    content = f.read()
-new_format = '''format = """
-[](fg:prompt)\\
-[   ](bg:prompt fg:fg_muted)\\
-$directory\\
-[](fg:prompt) \\
-$character"""
-
-'''
-content = re.sub(r'^(\[)', new_format + r'\1', content, count=1, flags=re.MULTILINE)
-with open(path, 'w') as f:
-    f.write(content)
-PYEOF
+      python3 ${./inject-sandbox-format.py} "$out/starship/$mode.toml"
     done
 
     # nvim colorscheme files — dual-theme lua, generated from the same
