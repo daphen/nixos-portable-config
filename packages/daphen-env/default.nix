@@ -60,14 +60,13 @@ let
         $mode \
         $out/starship/$mode.toml
       # SANDBOX_LABEL renders the short-name (set by lovssh) inside the
-      # prompt bar. lovssh exports it before exec'ing daphen-env; we add a
-      # default of "ssh" here so manual SSH sessions without lovssh still
-      # surface something compact instead of falling back to the pod name.
-      cat >> $out/starship/$mode.toml <<'LABELEOF'
-
-[env_var.SANDBOX_LABEL]
-default = "ssh"
-LABELEOF
+      # prompt bar. lovssh exports it before exec'ing daphen-env; we inject
+      # `default = "ssh"` into the existing template block so manual SSH
+      # sessions without lovssh still surface something compact instead of
+      # falling back to the pod name. (sed -a adds the default line right
+      # after the section header; can't append a second block — TOML rejects
+      # duplicate table names.)
+      sed -i '/^\[env_var\.SANDBOX_LABEL\]/a default = "ssh"' $out/starship/$mode.toml
     done
 
     # nvim colorscheme files — dual-theme lua, generated from the same
