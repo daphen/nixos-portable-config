@@ -1,7 +1,11 @@
-"""Insert a minimal top-level starship format block before the first
-[section] header. The template's existing format is inside
-[palettes.custom] (TOML scoping), so starship silently ignores it. Our
-injected one takes effect because it's at root scope.
+"""Replace the template's top-level starship format with the sandbox
+variant: two-row layout (cloud + langs + duration on top, path + prompt
+char on bottom), no git info.
+
+The proart prompt is two rows + lightning + git. The sandbox prompt
+shares the same modules and palette but uses a cloud icon and drops the
+git modules, since sandbox shells are project-local and the path alone
+is enough orientation.
 """
 import re
 import sys
@@ -12,17 +16,33 @@ with open(path) as f:
 
 new_format = '''format = """
 [](fg:prompt)\\
-[   ](bg:prompt fg:fg_muted)\\
+[  ](bg:prompt fg:fg_muted)\\
+${env_var.SANDBOX_LABEL}\\
+$nodejs\\
+$golang\\
+$rust\\
+$fill\\
+$cmd_duration\\
+[](fg:prompt)\\
+$line_break\\
 $directory\\
-[](fg:prompt) \\
 $character"""
-
 '''
 
-content = re.sub(r'^(\[)', new_format + r'\1', content, count=1, flags=re.MULTILINE)
+# Strip any pre-existing top-level `format = """..."""` (the template
+# may carry the proart-flavored version). TOML rejects duplicate keys.
+content = re.sub(
+    r'^format = """.*?"""\n?',
+    '',
+    content,
+    count=1,
+    flags=re.MULTILINE | re.DOTALL,
+)
 
-# Sandbox is single-project: `~` substitution > repo-root truncation.
-# Disable truncate_to_repo so the path shows as ~/lovable, not .../lovable.
+# Insert ours before the first [section] header so it stays top-level.
+content = re.sub(r'^(\[)', new_format + '\n' + r'\1', content, count=1, flags=re.MULTILINE)
+
+# Sandbox is single-project: `~`-rooted path > repo-root truncation.
 content = re.sub(
     r'^(\[directory\]\n)',
     r'\1truncate_to_repo = false\n',
