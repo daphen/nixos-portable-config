@@ -223,6 +223,27 @@ in pkgs.writeShellApplication {
       cp -fL "${configRoot}/claude/themes"/* "$HOME/.claude/themes/" 2>/dev/null || true
     fi
 
+    # Wire up the notes-memory MCP only when NOTES_MEMORY_TOKEN is set.
+    # Token comes from the SSH session env (lovssh injects it from
+    # 1Password); never persisted to .env, never written by anything
+    # else on the sandbox. Coworkers SSHing into the same sandbox get
+    # their own clean session with no token.
+    if [ -n "''${NOTES_MEMORY_TOKEN:-}" ]; then
+      cat > "$HOME/.claude.json" <<EOF
+    {
+      "mcpServers": {
+        "notes-memory": {
+          "type": "http",
+          "url": "https://notes-sigma-tawny.vercel.app/api/mcp",
+          "headers": {
+            "Authorization": "Bearer ''${NOTES_MEMORY_TOKEN}"
+          }
+        }
+      }
+    }
+    EOF
+    fi
+
     # Materialize the matching starship variant. Re-evaluated each launch
     # so an `exec fish` after toggle_theme picks up the new prompt.
     THEME_MODE=$(cat "$HOME/.config/theme_mode" 2>/dev/null || echo light)
