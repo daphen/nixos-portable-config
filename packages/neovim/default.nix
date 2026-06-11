@@ -39,6 +39,7 @@ let
       };
       doCheck = false;
     };
+
   };
 
   # Neovim wrapper module definition.
@@ -169,8 +170,6 @@ let
             p.diffview-nvim
 
             # LSP / Mason / formatting / linting
-            p.mason-nvim
-            p.mason-lspconfig-nvim
             p.conform-nvim
             p.nvim-lint
 

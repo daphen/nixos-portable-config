@@ -2,6 +2,118 @@ return {
 	"nvim-lspconfig",
 	event = "VimEnter",  -- Load after session restoration to avoid LSP flood
 	after = function()
+		-- Servers come from nix (extraPackages), not mason. mason-lspconfig
+		-- v2 only auto-enables mason-installed servers, so enable explicitly.
+		local capabilities = require("cmp_nvim_lsp").default_capabilities()
+		-- nvim implements LSP file-watching with a synchronous tree walk
+		-- (vim._watch.watchdirs, no inotifywait) — froze nvim ~15s on every
+		-- monorepo start. Servers watch their own files.
+		capabilities.workspace = vim.tbl_deep_extend("force", capabilities.workspace or {}, {
+			didChangeWatchedFiles = { dynamicRegistration = false },
+		})
+		vim.lsp.config("*", { capabilities = capabilities })
+
+		-- The CLI serves LSP via --lsp; no oxc_language_server binary exists.
+		vim.lsp.config("oxlint", {
+			cmd = { "oxlint", "--lsp" },
+		})
+
+		local base_eslint_attach = vim.lsp.config.eslint and vim.lsp.config.eslint.on_attach
+		vim.lsp.config("eslint", {
+			-- Only attach in projects with an actual eslint config —
+			-- default root matches any package.json.
+			root_markers = {
+				".eslintrc",
+				".eslintrc.js",
+				".eslintrc.cjs",
+				".eslintrc.json",
+				".eslintrc.yml",
+				".eslintrc.yaml",
+				"eslint.config.js",
+				"eslint.config.cjs",
+				"eslint.config.mjs",
+				"eslint.config.ts",
+			},
+			on_attach = function(client, bufnr)
+				if base_eslint_attach then
+					base_eslint_attach(client, bufnr)
+				end
+				vim.api.nvim_create_autocmd("BufWritePre", {
+					buffer = bufnr,
+					command = "LspEslintFixAll",
+				})
+			end,
+			settings = {
+				workingDirectories = { mode = "auto" },
+			},
+		})
+
+		-- Files not covered by any project tsconfig (.agents/, go/_embedded_runtime/, …)
+		-- fall back to the monorepo's stray root template (nodenext +
+		-- verbatimModuleSyntax) and drown in bogus TS1287s. CI never
+		-- typechecks them — their diagnostics are pure noise.
+		local uncovered_cache = {}
+		local function tsconfig_uncovered(fname)
+			local dir = vim.fs.dirname(fname)
+			if uncovered_cache[dir] ~= nil then return uncovered_cache[dir] end
+			local found = vim.fs.find("tsconfig.json", { path = dir, upward = true })[1]
+			local repo = vim.fs.root(dir, ".git")
+			local res = found ~= nil and repo ~= nil
+				and found == vim.fs.joinpath(repo, "tsconfig.json")
+			uncovered_cache[dir] = res
+			return res
+		end
+
+		vim.lsp.config("ts_ls", {
+			handlers = {
+				["textDocument/publishDiagnostics"] = function(err, result, ctx, config)
+					if result and result.diagnostics then
+						if result.uri and tsconfig_uncovered(vim.uri_to_fname(result.uri)) then
+							result.diagnostics = {}
+						end
+						result.diagnostics = vim.tbl_filter(function(diagnostic)
+							local code = diagnostic.code
+							if type(code) == "string" then
+								code = tonumber(code)
+							end
+							if diagnostic.source == "eslint" then
+								return false
+							end
+							if type(code) == "number" and code >= 71000 and code < 72000 then
+								return false
+							end
+							return true
+						end, result.diagnostics)
+					end
+					vim.lsp.handlers["textDocument/publishDiagnostics"](err, result, ctx, config)
+				end,
+			},
+		})
+
+		vim.lsp.config("tailwindcss", {
+			settings = {
+				tailwindCSS = {
+					-- templates/ holds dozens of starter apps; scanning
+					-- their tailwind configs stalls every monorepo start.
+					files = {
+						exclude = {
+							"**/.git/**",
+							"**/node_modules/**",
+							"**/templates/**",
+						},
+					},
+					experimental = {
+						classRegex = {
+							{ "cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]" },
+							{ "cx\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)" },
+						},
+					},
+				},
+			},
+		})
+
+		vim.lsp.enable({ "ts_ls", "eslint", "oxlint", "html", "tailwindcss", "gopls", "nil_ls" })
+
 		-- Configure LSP floating window borders globally
 		local border = "rounded"
 
